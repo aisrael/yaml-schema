@@ -5,16 +5,16 @@ mod error;
 pub use error::YamlSchemaError;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
-#[serde(untagged, rename_all = "camelCase")]
+#[serde(untagged)]
 pub enum YamlSchema {
-    AnyOf(AnyOf),
-    Literal(Literal),
-}
-
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct AnyOf {
-    pub any_of: Option<Vec<Literal>>
+    AnyOf {
+        #[serde(rename = "anyOf")]
+        any_of: Vec<Literal>,
+    },
+    AllOf {
+        #[serde(rename = "allOf")]
+        all_of: Vec<Literal>,
+    },
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
@@ -38,29 +38,38 @@ mod tests {
 
     #[test]
     fn test_any_of() {
-        let inputs = [
-            r#"
-            anyOf:
-            "#,
-            r#"
+        let inputs = [r#"
             anyOf:
                 - type: "string"
                   minLength: 1
-            "#,
-        ];
-        let expecteds = [
-            YamlSchema::AnyOf(AnyOf { any_of: None }),
-            YamlSchema::AnyOf(AnyOf {
-                any_of:
-                    Some(vec![
-                        Literal::String(YamlString {
-                            max_length: None,
-                            min_length: Some(1),
-                            pattern: None,
-                        })
-                    ])
-            }),
-        ];
+            "#];
+        let expecteds = [YamlSchema::AnyOf {
+            any_of: vec![Literal::String(YamlString {
+                max_length: None,
+                min_length: Some(1),
+                pattern: None,
+            })],
+        }];
+        for (expected, input) in expecteds.iter().zip(inputs.iter()) {
+            let actual = serde_yaml::from_str(input).unwrap();
+            assert_eq!(*expected, actual);
+        }
+    }
+
+    #[test]
+    fn test_all_of() {
+        let inputs = [r#"
+            allOf:
+                - type: "string"
+                  minLength: 1
+            "#];
+        let expecteds = [YamlSchema::AllOf {
+            all_of: vec![Literal::String(YamlString {
+                max_length: None,
+                min_length: Some(1),
+                pattern: None,
+            })],
+        }];
         for (expected, input) in expecteds.iter().zip(inputs.iter()) {
             let actual = serde_yaml::from_str(input).unwrap();
             assert_eq!(*expected, actual);
@@ -115,5 +124,4 @@ mod tests {
             assert_eq!(*expected, actual);
         }
     }
-
 }
