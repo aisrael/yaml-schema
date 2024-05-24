@@ -6,4 +6,6 @@ pub enum YamlSchemaError {
     IoError(#[from] std::io::Error),
     #[error("YAML parsing error: {0}")]
     YamlParsingError(#[from] yaml_rust2::ScanError),
+    #[error("Generic YAML schema error: {0}")]
+    GenericError(String),
 }
