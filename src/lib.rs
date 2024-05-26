@@ -83,7 +83,6 @@ mod tests {
         }
     }
 
-
     #[test]
     fn test_enum() {
         let inputs = [r#"

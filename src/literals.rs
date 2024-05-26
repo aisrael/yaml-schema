@@ -130,6 +130,5 @@ mod tests {
         if let YamlSchemaError::GenericError(s) = yaml_string.validate(&value).unwrap_err() {
             assert_eq!(s, "String does not match pattern: ^[a-z]+$");
         }
-
     }
 }
