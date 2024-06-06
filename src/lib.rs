@@ -1,8 +1,10 @@
 use serde::{Deserialize, Serialize};
 
+mod engine;
 mod error;
 mod literals;
 
+pub use engine::Engine;
 pub use error::YamlSchemaError;
 pub use literals::{Literal, YamlString};
 
@@ -30,6 +32,7 @@ pub enum YamlSchema {
         #[serde(rename = "enum")]
         values: Vec<serde_yaml::Value>,
     },
+    Literal(Literal),
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
@@ -39,6 +42,19 @@ pub enum EnumValue {
     Integer(i64),
     Float(f64),
     Literal(Literal),
+}
+
+// Initialize the logger for tests
+#[cfg(test)]
+#[ctor::ctor]
+fn init() {
+    env_logger::builder()
+    .filter_level(log::LevelFilter::Trace)
+    .format_target(false)
+    .format_timestamp_secs()
+    .target(env_logger::Target::Stdout)
+    .init();
+
 }
 
 #[cfg(test)]

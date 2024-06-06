@@ -1,6 +1,5 @@
 use clap::{Parser, Subcommand};
-use yaml_rust2::{YamlEmitter, YamlLoader};
-use yaml_schema::{YamlSchema, YamlSchemaError};
+use yaml_schema::{Engine, Literal, YamlSchema, YamlString};
 
 use yaml_schema::version;
 
@@ -27,8 +26,10 @@ fn main() {
             println!("ys {}", version());
         }
     }
-    let docs = YamlLoader::load_from_str("[1, 2, 3]").unwrap();
-    for doc in docs {
-        println!("{:?}", &doc);
-    }
+    let yaml: serde_yaml::Value = serde_yaml::from_str(r#""hello""#).unwrap();
+    let literal = Literal::String(YamlString::with_min_length(1));
+    let schema = YamlSchema::Literal(literal);
+    let engine = Engine::new(schema);
+
+    engine.evaluate(&yaml).unwrap();
 }

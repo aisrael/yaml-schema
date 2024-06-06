@@ -1,6 +1,8 @@
+use log::{debug, trace};
 use serde::{Deserialize, Serialize};
 
 use crate::error::YamlSchemaError;
+use crate::Validator;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "type", rename_all = "lowercase")]
@@ -8,7 +10,7 @@ pub enum Literal {
     String(YamlString),
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Default, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub struct YamlString {
     pub max_length: Option<u64>,
@@ -16,8 +18,9 @@ pub struct YamlString {
     pub pattern: Option<String>,
 }
 
-impl YamlString {
-    pub fn validate(&self, value: &serde_yaml::Value) -> Result<(), YamlSchemaError> {
+impl Validator for YamlString {
+    fn validate(&self, value: &serde_yaml::Value) -> Result<(), YamlSchemaError> {
+        debug!("Validating string: {:?}", value);
         if let serde_yaml::Value::String(s) = value {
             if let Some(max_length) = self.max_length {
                 if (s.len() as u64) > max_length {
@@ -29,6 +32,11 @@ impl YamlString {
             }
             if let Some(min_length) = self.min_length {
                 if (s.len() as u64) < min_length {
+                    trace!(
+                        "String length {} is than min_length: {}",
+                        s.len(),
+                        min_length
+                    );
                     return Err(YamlSchemaError::GenericError(format!(
                         "String length is less than min_length: {}",
                         min_length
@@ -52,6 +60,15 @@ impl YamlString {
                 "Expected string, got {:?}",
                 value
             )))
+        }
+    }
+}
+
+impl YamlString {
+    pub fn with_min_length(min_length: u64) -> YamlString {
+        YamlString {
+            min_length: Some(min_length),
+            ..Default::default()
         }
     }
 }
