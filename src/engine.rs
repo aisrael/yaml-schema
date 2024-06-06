@@ -37,6 +37,7 @@ fn validate_literal(literal: &Literal, value: &serde_yaml::Value) -> Result<(), 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::literals::YamlString;
 
     #[test]
     fn test_engine() {
