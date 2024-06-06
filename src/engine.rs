@@ -1,7 +1,7 @@
 use log::debug;
 
 use crate::error::YamlSchemaError;
-use crate::literals::{Literal, YamlString};
+use crate::literals::Literal;
 use crate::Validator;
 use crate::YamlSchema;
 

@@ -49,12 +49,11 @@ pub enum EnumValue {
 #[ctor::ctor]
 fn init() {
     env_logger::builder()
-    .filter_level(log::LevelFilter::Trace)
-    .format_target(false)
-    .format_timestamp_secs()
-    .target(env_logger::Target::Stdout)
-    .init();
-
+        .filter_level(log::LevelFilter::Trace)
+        .format_target(false)
+        .format_timestamp_secs()
+        .target(env_logger::Target::Stdout)
+        .init();
 }
 
 #[cfg(test)]
