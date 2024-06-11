@@ -25,6 +25,17 @@ async fn it_should_accept(world: &mut BasicsWorld, step: &Step) {
     assert!(schema.accepts(&input));
 }
 
+#[then(regex = "it should NOT accept:")]
+async fn it_should_not_accept(world: &mut BasicsWorld, step: &Step) {
+    let raw_input = step.docstring().unwrap();
+    debug!("raw_input: {:?}", raw_input);
+    let input: serde_yaml::Value = serde_yaml::from_str(&raw_input).unwrap();
+    debug!("input: {:?}", input);
+    let schema = world.yaml_schema.as_ref().unwrap();
+    assert!(!schema.accepts(&input));
+}
+
+
 #[tokio::main]
 async fn main() {
     env_logger::builder()

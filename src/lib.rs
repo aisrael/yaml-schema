@@ -19,16 +19,23 @@ pub trait Validator {
     fn validate(&self, value: &serde_yaml::Value) -> Result<(), YamlSchemaError>;
 }
 
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[serde(untagged)]
+pub enum YamlSchema {
+    Boolean(bool),
+    Schema(YamlSchemaValue),
+}
+
 #[derive(Debug, Default, Serialize, Deserialize, PartialEq)]
-pub struct YamlSchema {
+pub struct YamlSchemaValue {
     pub r#type: Option<TypeValue>,
 }
 
 impl YamlSchema {
     pub fn new() -> YamlSchema {
-        YamlSchema {
+        YamlSchema::Schema(YamlSchemaValue {
             ..Default::default()
-        }
+        })
     }
 
     /// Determines whether the given `value` is accepted by the YAML schema.
@@ -62,6 +69,26 @@ impl YamlSchema {
                 debug!("Error: {:?}", e);
                 false
             }
+        }
+    }
+}
+
+impl Validator for YamlSchema {
+    fn validate(&self, value: &serde_yaml::Value) -> Result<(), YamlSchemaError> {
+        debug!("Validating value: {:?}", value);
+        match self {
+            YamlSchema::Boolean(boolean) => {
+                if *boolean {
+                    Ok(())
+                } else {
+                    generic_error!("Schema is `false`!")
+                }
+            }
+            YamlSchema::Schema(schema_value) => {
+                debug!("Schema value: {:?}", schema_value);
+                Ok(())
+            }
+
         }
     }
 }
@@ -101,88 +128,26 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_parse_type_only() {
-        let inputs = [r#"
-              type: string
-            "#];
-        let expecteds = [YamlSchema::Literal(Literal::String(YamlString {
-            max_length: None,
-            min_length: None,
-            pattern: None,
-        }))];
-        for (expected, input) in expecteds.iter().zip(inputs.iter()) {
-            let actual = serde_yaml::from_str(&format!("type: {}", input)).unwrap();
-            assert_eq!(*expected, actual);
-        }
-    }
-
-    fn test_parse_any_of() {
-        let inputs = [r#"
-            anyOf:
-                - type: "string"
-                  minLength: 1
-            "#];
-        let expecteds = [YamlSchema::AnyOf {
-            any_of: vec![Literal::String(YamlString {
-                max_length: None,
-                min_length: Some(1),
-                pattern: None,
-            })],
-        }];
-        for (expected, input) in expecteds.iter().zip(inputs.iter()) {
-            let actual = serde_yaml::from_str(input).unwrap();
-            assert_eq!(*expected, actual);
-        }
-    }
-
-    fn test_parse_all_of() {
-        let inputs = [r#"
-            allOf:
-                - type: "string"
-                  minLength: 1
-            "#];
-        let expecteds = [YamlSchema::AllOf {
-            all_of: vec![Literal::String(YamlString {
-                max_length: None,
-                min_length: Some(1),
-                pattern: None,
-            })],
-        }];
-        for (expected, input) in expecteds.iter().zip(inputs.iter()) {
-            let actual = serde_yaml::from_str(input).unwrap();
-            assert_eq!(*expected, actual);
-        }
-    }
-
-    fn test_parse_enum() {
-        let inputs = [r#"
-            enum:
-                - null
-            "#];
-        let expecteds = [YamlSchema::Enum {
-            values: vec![serde_yaml::Value::Null],
-        }];
-        for (expected, input) in expecteds.iter().zip(inputs.iter()) {
-            let actual = serde_yaml::from_str(input).unwrap();
-            assert_eq!(*expected, actual);
-        }
-    }
-
-    fn test_root_string() {
-        let schema: YamlSchema = serde_yaml::from_str(
-            r#"
-            type: string
-        "#,
-        )
-        .unwrap();
-        let expected = YamlSchema::Literal(Literal::String(YamlString {
-            max_length: None,
-            min_length: None,
-            pattern: None,
-        }));
+    fn test_parse_empty_schema() {
+        let schema: YamlSchema = serde_yaml::from_str("{}").unwrap();
+        let expected = YamlSchema::Schema(YamlSchemaValue {
+            r#type: None,
+        });
         assert_eq!(expected, schema);
-        assert!(schema
-            .validate(&serde_yaml::Value::String(r#""I'm a string""#.to_string()))
-            .is_ok());
+    }
+
+    #[test]
+    fn test_parse_true_schema() {
+        let schema: YamlSchema = serde_yaml::from_str("true").unwrap();
+        let expected = YamlSchema::Boolean(true);
+        assert_eq!(expected, schema);
+    }
+
+
+    #[test]
+    fn test_parse_false_schema() {
+        let schema: YamlSchema = serde_yaml::from_str("false").unwrap();
+        let expected = YamlSchema::Boolean(false);
+        assert_eq!(expected, schema);
     }
 }

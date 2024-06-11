@@ -13,6 +13,13 @@ pub enum YamlSchemaError {
 }
 
 #[macro_export]
+macro_rules! generic_error {
+    ($s:literal) => {
+        return Err(YamlSchemaError::GenericError($s.to_string()));
+    };
+}
+
+#[macro_export]
 macro_rules! not_yet_implemented {
     () => {
         return Err(YamlSchemaError::NotYetImplemented);
