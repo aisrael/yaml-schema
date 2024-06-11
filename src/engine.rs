@@ -2,15 +2,16 @@ use log::debug;
 
 use crate::error::YamlSchemaError;
 use crate::literals::Literal;
+use crate::not_yet_implemented;
 use crate::Validator;
 use crate::YamlSchema;
 
-pub struct Engine {
-    pub schema: YamlSchema,
+pub struct Engine<'a> {
+    pub schema: &'a YamlSchema,
 }
 
-impl Engine {
-    pub fn new(schema: YamlSchema) -> Engine {
+impl<'a> Engine<'a> {
+    pub fn new(schema: &'a YamlSchema) -> Engine<'a> {
         Engine { schema }
     }
 
@@ -22,10 +23,7 @@ impl Engine {
 }
 
 fn validate(schema: &YamlSchema, value: &serde_yaml::Value) -> Result<(), YamlSchemaError> {
-    match schema {
-        YamlSchema::Literal(literal) => validate_literal(literal, value),
-        _ => unimplemented!(),
-    }
+    Ok(())
 }
 
 fn validate_literal(literal: &Literal, value: &serde_yaml::Value) -> Result<(), YamlSchemaError> {
@@ -42,7 +40,7 @@ mod tests {
     #[test]
     fn test_engine() {
         let literal = Literal::String(YamlString::with_min_length(1));
-        let schema = YamlSchema::Literal(literal);
+        let schema = YamlSchema::new();
         let engine = Engine::new(schema);
         let yaml: serde_yaml::Value = serde_yaml::from_str(r#""hello""#).unwrap();
         let res = engine.evaluate(&yaml);
