@@ -1,5 +1,5 @@
 use clap::{Parser, Subcommand};
-use yaml_schema::{Engine, Literal, YamlSchema, YamlString};
+use yaml_schema::{Engine, YamlSchema};
 
 use yaml_schema::version;
 

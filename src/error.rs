@@ -15,7 +15,7 @@ pub enum YamlSchemaError {
 #[macro_export]
 macro_rules! generic_error {
     ($s:literal) => {
-        return Err(YamlSchemaError::GenericError($s.to_string()));
+        Err(YamlSchemaError::GenericError($s.to_string()))
     };
 }
 

@@ -31,6 +31,12 @@ pub struct YamlSchemaValue {
     pub r#type: Option<TypeValue>,
 }
 
+impl Default for YamlSchema {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl YamlSchema {
     pub fn new() -> YamlSchema {
         YamlSchema::Schema(YamlSchemaValue {
@@ -63,7 +69,7 @@ impl YamlSchema {
     pub fn accepts(&self, value: &serde_yaml::Value) -> bool {
         debug!("Accepting value: {:?}", value);
         let engine = Engine::new(self);
-        match (engine.evaluate(value)) {
+        match engine.evaluate(value) {
             Ok(_) => true,
             Err(e) => {
                 debug!("Error: {:?}", e);
@@ -88,7 +94,6 @@ impl Validator for YamlSchema {
                 debug!("Schema value: {:?}", schema_value);
                 Ok(())
             }
-
         }
     }
 }
@@ -123,16 +128,12 @@ fn init() {
 #[cfg(test)]
 mod tests {
 
-    use std::vec;
-
     use super::*;
 
     #[test]
     fn test_parse_empty_schema() {
         let schema: YamlSchema = serde_yaml::from_str("{}").unwrap();
-        let expected = YamlSchema::Schema(YamlSchemaValue {
-            r#type: None,
-        });
+        let expected = YamlSchema::Schema(YamlSchemaValue { r#type: None });
         assert_eq!(expected, schema);
     }
 
@@ -142,7 +143,6 @@ mod tests {
         let expected = YamlSchema::Boolean(true);
         assert_eq!(expected, schema);
     }
-
 
     #[test]
     fn test_parse_false_schema() {

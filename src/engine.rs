@@ -1,9 +1,6 @@
 use log::debug;
 
 use crate::error::YamlSchemaError;
-use crate::literals::Literal;
-use crate::generic_error;
-use crate::not_yet_implemented;
 use crate::Validator;
 use crate::YamlSchema;
 
@@ -19,7 +16,7 @@ impl<'a> Engine<'a> {
     pub fn evaluate(&self, yaml: &serde_yaml::Value) -> Result<(), YamlSchemaError> {
         debug!("Engine is running");
 
-        validate(&self.schema, yaml)
+        validate(self.schema, yaml)
     }
 }
 
@@ -28,16 +25,8 @@ fn validate(schema: &YamlSchema, value: &serde_yaml::Value) -> Result<(), YamlSc
     schema.validate(value)
 }
 
-fn validate_literal(literal: &Literal, value: &serde_yaml::Value) -> Result<(), YamlSchemaError> {
-    match literal {
-        Literal::String(yaml_string) => yaml_string.validate(value),
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::literals::YamlString;
 
     // fn test_engine() {
     //     let literal = Literal::String(YamlString::with_min_length(1));
