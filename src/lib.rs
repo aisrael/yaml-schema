@@ -44,6 +44,23 @@ pub enum EnumValue {
     Literal(Literal),
 }
 
+impl Validator for YamlSchema {
+    fn validate(&self, value: &serde_yaml::Value) -> Result<(), YamlSchemaError> {
+        match self {
+            YamlSchema::AnyOf { .. } => Err(YamlSchemaError::GenericError(
+                "AnyOf not implemented".to_string(),
+            )),
+            YamlSchema::AllOf { .. } => Err(YamlSchemaError::GenericError(
+                "AllOf not implemented".to_string(),
+            )),
+            YamlSchema::Enum { .. } => Err(YamlSchemaError::GenericError(
+                "Enum not implemented".to_string(),
+            )),
+            YamlSchema::Literal(literal) => literal.validate(value),
+        }
+    }
+}
+
 // Initialize the logger for tests
 #[cfg(test)]
 #[ctor::ctor]
@@ -64,7 +81,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_any_of() {
+    fn test_parse_any_of() {
         let inputs = [r#"
             anyOf:
                 - type: "string"
@@ -84,7 +101,7 @@ mod tests {
     }
 
     #[test]
-    fn test_all_of() {
+    fn test_parse_all_of() {
         let inputs = [r#"
             allOf:
                 - type: "string"
@@ -104,7 +121,7 @@ mod tests {
     }
 
     #[test]
-    fn test_enum() {
+    fn test_parse_enum() {
         let inputs = [r#"
             enum:
                 - null
@@ -116,5 +133,24 @@ mod tests {
             let actual = serde_yaml::from_str(input).unwrap();
             assert_eq!(*expected, actual);
         }
+    }
+
+    #[test]
+    fn test_root_string() {
+        let schema: YamlSchema = serde_yaml::from_str(
+            r#"
+            type: string
+        "#,
+        )
+        .unwrap();
+        let expected = YamlSchema::Literal(Literal::String(YamlString {
+            max_length: None,
+            min_length: None,
+            pattern: None,
+        }));
+        assert_eq!(expected, schema);
+        assert!(schema
+            .validate(&serde_yaml::Value::String(r#""I'm a string""#.to_string()))
+            .is_ok());
     }
 }

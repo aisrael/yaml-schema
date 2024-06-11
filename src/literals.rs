@@ -10,6 +10,14 @@ pub enum Literal {
     String(YamlString),
 }
 
+impl Validator for Literal {
+    fn validate(&self, value: &serde_yaml::Value) -> Result<(), YamlSchemaError> {
+        match self {
+            Literal::String(yaml_string) => yaml_string.validate(value),
+        }
+    }
+}
+
 #[derive(Debug, Default, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub struct YamlString {

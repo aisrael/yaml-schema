@@ -1,0 +1,29 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: https://json-schema.org/draft/2020-12/meta/core
+title: YAML Schema meta-schema
+description: Meta-schema for YAML Schema, based on JSON Schema meta-schema
+type: object
+properties:
+  $schema:
+    description: Specifies which draft of the JSON Schema standard the schema adheres to.
+    type: string
+  $id:
+    description: |
+      Sets a URI for the schema. You can use this unique URI to refer to elements of the
+      schema from inside the same document or from external JSON documents.
+    type: string
+  title:
+    description: The title of the schema
+    type: string
+  description:
+    description: A description of the schema
+    type: string
+  type:
+    description: defines the first constraint on the JSON data.
+    type: string
+    enum:
+      - object
+      - string
+  properties:
+    description: The properties that are defined in the schema
+    type: object
