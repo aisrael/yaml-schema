@@ -43,40 +43,6 @@ impl YamlSchema {
             ..Default::default()
         })
     }
-
-    /// Determines whether the given `value` is accepted by the YAML schema.
-    ///
-    /// # Arguments
-    ///
-    /// * `value` - The YAML value to be checked against the schema.
-    ///
-    /// # Returns
-    ///
-    /// Returns `true` if the `value` is accepted by the schema, otherwise `false`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use serde_yaml::Value;
-    /// use yaml_schema::YamlSchema;
-    ///
-    /// let schema = YamlSchema::new();
-    /// let value = serde_yaml::from_str("some_yaml_string").unwrap();
-    /// let accepted = schema.accepts(&value);
-    /// println!("Accepted: {}", accepted);
-    /// ```
-    ///
-    pub fn accepts(&self, value: &serde_yaml::Value) -> bool {
-        debug!("Accepting value: {:?}", value);
-        let engine = Engine::new(self);
-        match engine.evaluate(value) {
-            Ok(_) => true,
-            Err(e) => {
-                debug!("Error: {:?}", e);
-                false
-            }
-        }
-    }
 }
 
 impl Validator for YamlSchema {

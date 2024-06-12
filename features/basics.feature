@@ -3,7 +3,6 @@ Feature: Basic YAML schema
   Scenario: Empty YAML
     Given a YAML schema:
       ```
-      {}
       ```
 
     Then it should accept:

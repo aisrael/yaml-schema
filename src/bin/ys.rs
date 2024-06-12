@@ -28,7 +28,8 @@ fn main() {
     }
     let yaml: serde_yaml::Value = serde_yaml::from_str(r#""hello""#).unwrap();
     let schema = YamlSchema::new();
-    let engine = Engine::new(&schema);
+    let binding = Some(schema);
+    let engine = Engine::new(&binding);
 
     engine.evaluate(&yaml).unwrap();
 }

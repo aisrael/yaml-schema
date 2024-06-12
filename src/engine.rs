@@ -5,24 +5,22 @@ use crate::Validator;
 use crate::YamlSchema;
 
 pub struct Engine<'a> {
-    pub schema: &'a YamlSchema,
+    pub schema: &'a Option<YamlSchema>,
 }
 
 impl<'a> Engine<'a> {
-    pub fn new(schema: &'a YamlSchema) -> Engine<'a> {
+    pub fn new(schema: &'a Option<YamlSchema>) -> Engine<'a> {
         Engine { schema }
     }
 
     pub fn evaluate(&self, yaml: &serde_yaml::Value) -> Result<(), YamlSchemaError> {
         debug!("Engine is running");
 
-        validate(self.schema, yaml)
+        match self.schema {
+            Some(schema) => schema.validate(yaml),
+            None => Ok(()),
+        }
     }
-}
-
-/// Recursively validate
-fn validate(schema: &YamlSchema, value: &serde_yaml::Value) -> Result<(), YamlSchemaError> {
-    schema.validate(value)
 }
 
 #[cfg(test)]
