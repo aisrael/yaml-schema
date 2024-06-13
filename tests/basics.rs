@@ -4,18 +4,18 @@ use yaml_schema::{Engine, YamlSchema};
 
 #[derive(Debug, Default, World)]
 pub struct BasicsWorld {
-    yaml_schema: Option<YamlSchema>,
+    yaml_schema: YamlSchema,
 }
 
 #[given(regex = "a YAML schema:")]
 async fn a_yaml_schema(world: &mut BasicsWorld, step: &Step) {
     let schema = step.docstring().unwrap();
     debug!("schema: {:?}", schema);
-    let yaml_schema: Option<YamlSchema> = serde_yaml::from_str(schema).unwrap();
+    let yaml_schema: YamlSchema = serde_yaml::from_str(schema).unwrap();
     world.yaml_schema = yaml_schema;
 }
 
-fn accepts(schema: &Option<YamlSchema>, value: &serde_yaml::Value) -> bool {
+fn accepts(schema: &YamlSchema, value: &serde_yaml::Value) -> bool {
     let engine = Engine::new(schema);
     match engine.evaluate(value) {
         Ok(_) => true,

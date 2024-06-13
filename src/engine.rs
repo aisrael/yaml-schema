@@ -5,21 +5,17 @@ use crate::Validator;
 use crate::YamlSchema;
 
 pub struct Engine<'a> {
-    pub schema: &'a Option<YamlSchema>,
+    pub schema: &'a YamlSchema,
 }
 
 impl<'a> Engine<'a> {
-    pub fn new(schema: &'a Option<YamlSchema>) -> Engine<'a> {
+    pub fn new(schema: &'a YamlSchema) -> Engine<'a> {
         Engine { schema }
     }
 
     pub fn evaluate(&self, yaml: &serde_yaml::Value) -> Result<(), YamlSchemaError> {
         debug!("Engine is running");
-
-        match self.schema {
-            Some(schema) => schema.validate(yaml),
-            None => Ok(()),
-        }
+        self.schema.validate(yaml)
     }
 }
 
