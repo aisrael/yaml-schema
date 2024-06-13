@@ -64,3 +64,25 @@ Feature: Basic YAML schema
         - nested
       data: structure
       ```
+
+  Scenario: "type: string" should accept strings
+    Given a YAML schema:
+      ```
+      type: string
+      ```
+
+    Then it should accept:
+      ```
+      "I'm a string"
+      ```
+    Then it should NOT accept:
+      ```
+      42
+      ```
+    And it should NOT accept:
+      ```
+      an:
+        - arbitrarily
+        - nested
+      data: structure
+      ```
