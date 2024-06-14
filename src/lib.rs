@@ -1,3 +1,6 @@
+
+use std::collections::HashMap;
+
 use log::debug;
 use serde::{Deserialize, Serialize};
 
@@ -13,10 +16,6 @@ pub use literals::{Literal, YamlString};
 // Returns the library version, which reflects the crate version
 pub fn version() -> String {
     clap::crate_version!().to_string()
-}
-
-pub trait Validator {
-    fn validate(&self, value: &serde_yaml::Value) -> Result<(), YamlSchemaError>;
 }
 
 #[derive(Debug, Default, Serialize, Deserialize, PartialEq)]
@@ -38,44 +37,25 @@ impl YamlSchema {
     }
 }
 
-impl Validator for YamlSchema {
-    fn validate(&self, value: &serde_yaml::Value) -> Result<(), YamlSchemaError> {
-        debug!("Validating value: {:?}", value);
-        match self {
-            YamlSchema::Empty => Ok(()),
-            YamlSchema::Boolean(boolean) => {
-                if *boolean {
-                    Ok(())
-                } else {
-                    generic_error!("Schema is `false`!")
-                }
-            }
-            YamlSchema::TypedSchema(schema_value) => {
-                debug!("Schema value: {:?}", schema_value);
-                match schema_value.r#type.as_deref() {
-                    Some("string") => {
-                        if let serde_yaml::Value::String(_) = value {
-                            Ok(())
-                        } else {
-                            generic_error!("Value is not a string!")
-                        }
-                    }
-                    _ => Ok(()),
-                }
-            }
-        }
-    }
-}
-
-#[derive(Debug, Default, Serialize, Deserialize, PartialEq)]
-pub struct TypedSchema {
-    pub r#type: Option<String>,
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[serde(tag = "type", rename_all = "lowercase")]
+pub enum TypedSchema {
+    String {
+        min_length: Option<usize>,
+        max_length: Option<usize>,
+        regex: Option<String>,
+    },
+    Object {
+        properties: Option<HashMap<String, serde_yaml::Value>>,
+    },
 }
 
 impl TypedSchema {
-    pub fn for_type(s: &str) -> TypedSchema {
-        TypedSchema {
-            r#type: Some(s.to_string()),
+    pub fn string() -> TypedSchema {
+        TypedSchema::String {
+            min_length: None,
+            max_length: None,
+            regex: None,
         }
     }
 }
@@ -116,9 +96,6 @@ mod tests {
     fn test_parse_empty_schema() {
         let schema: YamlSchema = serde_yaml::from_str("").unwrap();
         assert!(schema.is_none());
-        let schema: YamlSchema = serde_yaml::from_str("{}").unwrap();
-        let expected = YamlSchema::TypedSchema(TypedSchema { r#type: None });
-        assert_eq!(expected, schema);
     }
 
     #[test]
@@ -138,7 +115,7 @@ mod tests {
     #[test]
     fn test_parse_type_string_schema() {
         let schema: YamlSchema = serde_yaml::from_str("type: string").unwrap();
-        let expected = YamlSchema::TypedSchema(TypedSchema::for_type("string"));
+        let expected = YamlSchema::TypedSchema(TypedSchema::string());
         assert_eq!(expected, schema);
     }
 }

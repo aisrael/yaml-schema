@@ -1,8 +1,8 @@
 use log::{debug, trace};
 use serde::{Deserialize, Serialize};
 
+use crate::engine::Validator;
 use crate::error::YamlSchemaError;
-use crate::Validator;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "type", rename_all = "lowercase")]

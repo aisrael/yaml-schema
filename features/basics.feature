@@ -86,3 +86,24 @@ Feature: Basic YAML schema
         - nested
       data: structure
       ```
+
+  Scenario: "type: object" should validate existence of properties
+    Given a YAML schema:
+      ```
+      type: object
+      properties:
+        foo:
+          type: string
+        bar:
+          type: number
+      ```
+
+    Then it should accept:
+      ```
+      foo: "I'm a string"
+      bar: 42
+      ```
+    And it should NOT accept:
+      ```
+      foo: "I'm a string"
+      ```

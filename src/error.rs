@@ -22,6 +22,6 @@ macro_rules! generic_error {
 #[macro_export]
 macro_rules! not_yet_implemented {
     () => {
-        return Err(YamlSchemaError::NotYetImplemented);
+        Err(YamlSchemaError::NotYetImplemented)
     };
 }
