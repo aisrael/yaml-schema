@@ -1,6 +1,6 @@
+use core::panic;
 use cucumber::{gherkin::Step, given, then, when, World};
 use log::{debug, info};
-use core::panic;
 use std::process::Command;
 
 #[derive(Debug, Default, World)]
@@ -13,7 +13,7 @@ async fn run_command(world: &mut CliWorld, step: &Step) {
     let raw_command = step.docstring().unwrap();
     debug!("raw_command {}", raw_command);
     let parts = raw_command.split_whitespace().collect::<Vec<&str>>();
-    assert!(parts.len() > 0, "No command provided");
+    assert!(!parts.is_empty(), "No command provided");
     let mut args: Vec<&str> = parts[1..].to_vec();
     let executable = if parts[0] == "ys" {
         args.insert(0, "--");
@@ -52,7 +52,7 @@ async fn it_should_exit_with_status(_world: &mut CliWorld, status: i32) {
 async fn it_should_output(world: &mut CliWorld, step: &Step) {
     assert!(world.command_output.is_some());
     // For some reason, the output docstring has a leading newline
-    let expected_output = step.docstring().unwrap().strip_prefix("\n").unwrap();
+    let expected_output = step.docstring().unwrap().strip_prefix('\n').unwrap();
     let actual_output = world.command_output.as_ref().unwrap();
     assert_eq!(expected_output, actual_output);
 }
