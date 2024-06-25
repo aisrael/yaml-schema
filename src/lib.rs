@@ -22,7 +22,7 @@ pub enum YamlSchema {
     #[default]
     Empty,
     Boolean(bool),
-    TypedSchema(TypedSchema),
+    TypedSchema(Box<TypedSchema>),
 }
 
 impl YamlSchema {
@@ -153,7 +153,7 @@ mod tests {
     #[test]
     fn test_parse_type_string_schema() {
         let schema: YamlSchema = serde_yaml::from_str("type: string").unwrap();
-        let expected = YamlSchema::TypedSchema(TypedSchema::string());
+        let expected = YamlSchema::TypedSchema(Box::new(TypedSchema::string()));
         assert_eq!(expected, schema);
     }
 }

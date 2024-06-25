@@ -85,7 +85,9 @@ impl Validator for TypedSchema {
                     })?;
                     if let Some(properties) = &self.properties {
                         for property in properties.keys() {
-                            if !yaml_object.contains_key(&serde_yaml::Value::String(property.clone())) {
+                            if !yaml_object
+                                .contains_key(&serde_yaml::Value::String(property.clone()))
+                            {
                                 return Err(YamlSchemaError::GenericError(format!(
                                     "Property `{}` is missing!",
                                     property
@@ -119,7 +121,7 @@ mod tests {
             .into_iter()
             .collect(),
         );
-        let yaml_schema = YamlSchema::TypedSchema(schema);
+        let yaml_schema = YamlSchema::TypedSchema(Box::new(schema));
         let engine = Engine::new(&yaml_schema);
         let yaml = serde_yaml::from_str(
             r#"
