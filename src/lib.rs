@@ -35,33 +35,73 @@ impl YamlSchema {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
-#[serde(tag = "type", rename_all = "lowercase")]
-pub enum TypedSchema {
-    String {
-        min_length: Option<usize>,
-        max_length: Option<usize>,
-        regex: Option<String>,
-    },
-    Object {
-        properties: Option<HashMap<String, serde_yaml::Value>>,
-    },
+#[derive(Debug, Default, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub struct TypedSchema {
+    pub r#type: TypeValue,
+    // number
+    pub minimum: Option<f64>,
+    pub maximum: Option<f64>,
+    pub exclusive_minimum: Option<f64>,
+    pub exclusive_maximum: Option<f64>,
+    pub multiple_of: Option<f64>,
+    // object
+    pub properties: Option<HashMap<String, YamlSchema>>,
+    // string
+    pub min_length: Option<usize>,
+    pub max_length: Option<usize>,
+    pub regex: Option<String>,
 }
 
 impl TypedSchema {
     pub fn string() -> TypedSchema {
-        TypedSchema::String {
-            min_length: None,
-            max_length: None,
-            regex: None,
+        TypedSchema {
+            r#type: TypeValue::string(),
+            ..Default::default()
+        }
+    }
+
+    pub fn number() -> TypedSchema {
+        TypedSchema {
+            r#type: TypeValue::number(),
+            ..Default::default()
+        }
+    }
+
+    pub fn object(properties: HashMap<String, YamlSchema>) -> TypedSchema {
+        TypedSchema {
+            r#type: TypeValue::object(),
+            properties: Some(properties),
+            ..Default::default()
         }
     }
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[serde(untagged)]
 pub enum TypeValue {
     String(String),
     Array(Vec<String>),
+}
+
+impl TypeValue {
+    pub fn number() -> TypeValue {
+        TypeValue::String("number".to_string())
+    }
+
+    pub fn object() -> TypeValue {
+        TypeValue::String("object".to_string())
+    }
+
+    pub fn string() -> TypeValue {
+        TypeValue::String("string".to_string())
+    }
+}
+
+impl Default for TypeValue {
+    fn default() -> Self {
+        TypeValue::String("object".to_string())
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]

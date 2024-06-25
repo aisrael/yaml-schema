@@ -1,7 +1,7 @@
 use log::debug;
 
 use crate::error::YamlSchemaError;
-use crate::{generic_error, TypedSchema, YamlSchema};
+use crate::{generic_error, not_yet_implemented, TypeValue, TypedSchema, YamlSchema};
 
 pub struct Engine<'a> {
     pub schema: &'a YamlSchema,
@@ -24,6 +24,7 @@ pub trait Validator {
 
 impl Validator for YamlSchema {
     fn validate(&self, value: &serde_yaml::Value) -> Result<(), YamlSchemaError> {
+        debug!("self: {:?}", self);
         debug!("Validating value: {:?}", value);
         match self {
             YamlSchema::Empty => Ok(()),
@@ -45,56 +46,59 @@ impl Validator for YamlSchema {
 impl Validator for TypedSchema {
     fn validate(&self, value: &serde_yaml::Value) -> Result<(), YamlSchemaError> {
         debug!("Validating value: {:?}", value);
-        match self {
-            TypedSchema::String {
-                min_length,
-                max_length,
-                regex,
-            } => {
-                let yaml_string = value.as_str().ok_or_else(|| {
-                    YamlSchemaError::GenericError(format!(
-                        "Expected a string, but got: {:?}",
-                        value
-                    ))
-                })?;
-                if let Some(min_length) = min_length {
-                    if yaml_string.len() < *min_length {
-                        return generic_error!("String is too short!");
-                    }
-                }
-                if let Some(max_length) = max_length {
-                    if yaml_string.len() > *max_length {
-                        return generic_error!("String is too long!");
-                    }
-                }
-                if let Some(regex) = regex {
-                    let re = regex::Regex::new(regex).map_err(|e| {
-                        YamlSchemaError::GenericError(format!("Invalid regex: {}", e))
+
+        match self.r#type {
+            TypeValue::String(ref s) => match s.as_str() {
+                "string" => {
+                    let yaml_string = value.as_str().ok_or_else(|| {
+                        YamlSchemaError::GenericError(format!(
+                            "Expected a string, but got: {:?}",
+                            value
+                        ))
                     })?;
-                    if !re.is_match(yaml_string) {
-                        return generic_error!("String does not match regex!");
-                    }
-                }
-                Ok(())
-            }
-            TypedSchema::Object { properties } => {
-                let yaml_object = value.as_mapping().ok_or_else(|| {
-                    YamlSchemaError::GenericError(format!(
-                        "Expected a mapping, but got: {:?}",
-                        value
-                    ))
-                })?;
-                if let Some(properties) = properties {
-                    for property in properties.keys() {
-                        if !yaml_object.contains_key(&serde_yaml::Value::String(property.clone())) {
-                            return Err(YamlSchemaError::GenericError(format!(
-                                "Property `{}` is missing!",
-                                property
-                            )));
+                    if let Some(min_length) = &self.min_length {
+                        if yaml_string.len() < *min_length {
+                            return generic_error!("String is too short!");
                         }
                     }
+                    if let Some(max_length) = &self.max_length {
+                        if yaml_string.len() > *max_length {
+                            return generic_error!("String is too long!");
+                        }
+                    }
+                    if let Some(regex) = &self.regex {
+                        let re = regex::Regex::new(regex).map_err(|e| {
+                            YamlSchemaError::GenericError(format!("Invalid regex: {}", e))
+                        })?;
+                        if !re.is_match(yaml_string) {
+                            return generic_error!("String does not match regex!");
+                        }
+                    }
+                    Ok(())
                 }
-                Ok(())
+                "object" => {
+                    let yaml_object = value.as_mapping().ok_or_else(|| {
+                        YamlSchemaError::GenericError(format!(
+                            "Expected a mapping, but got: {:?}",
+                            value
+                        ))
+                    })?;
+                    if let Some(properties) = &self.properties {
+                        for property in properties.keys() {
+                            if !yaml_object.contains_key(&serde_yaml::Value::String(property.clone())) {
+                                return Err(YamlSchemaError::GenericError(format!(
+                                    "Property `{}` is missing!",
+                                    property
+                                )));
+                            }
+                        }
+                    }
+                    Ok(())
+                }
+                _ => not_yet_implemented!(),
+            },
+            TypeValue::Array(_) => {
+                not_yet_implemented!()
             }
         }
     }
@@ -103,15 +107,27 @@ impl Validator for TypedSchema {
 #[cfg(test)]
 mod tests {
 
-    // fn test_engine() {
-    //     let literal = Literal::String(YamlString::with_min_length(1));
-    //     let schema = YamlSchema::new();
-    //     let engine = Engine::new(schema);
-    //     let yaml: serde_yaml::Value = serde_yaml::from_str(r#""hello""#).unwrap();
-    //     let res = engine.evaluate(&yaml);
-    //     assert!(res.is_ok());
+    use super::*;
 
-    //     let invalid_yaml = serde_yaml::from_str(r#""""#).unwrap();
-    //     assert!(engine.evaluate(&invalid_yaml).is_err());
-    // }
+    #[test]
+    fn test_properties_with_no_value() {
+        let schema = TypedSchema::object(
+            vec![
+                ("name".to_string(), YamlSchema::Empty),
+                ("age".to_string(), YamlSchema::Empty),
+            ]
+            .into_iter()
+            .collect(),
+        );
+        let yaml_schema = YamlSchema::TypedSchema(schema);
+        let engine = Engine::new(&yaml_schema);
+        let yaml = serde_yaml::from_str(
+            r#"
+            name: "John Doe"
+            age: 42
+        "#,
+        )
+        .unwrap();
+        assert!(engine.evaluate(&yaml).is_ok());
+    }
 }
