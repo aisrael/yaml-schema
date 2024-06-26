@@ -36,7 +36,7 @@ impl YamlSchema {
 }
 
 #[derive(Debug, Default, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "lowercase")]
+#[serde(rename_all = "camelCase")]
 pub struct TypedSchema {
     pub r#type: TypeValue,
     // number
