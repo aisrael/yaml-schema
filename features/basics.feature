@@ -65,17 +65,32 @@ Feature: Basic YAML schema
       data: structure
       ```
 
+  Scenario: "type: foo" should error
+    Given a YAML schema:
+      ```
+      type: foo
+      ```
+    Then it should NOT accept:
+      ```
+      42
+      ```
+    And the error should be a GenericError
+    And the error message should be "Unknown type 'foo'!"
+
   Scenario: "type: string" should accept strings
     Given a YAML schema:
       ```
       type: string
       ```
-
     Then it should accept:
+      ```
+      ""
+      ```
+    And it should accept:
       ```
       "I'm a string"
       ```
-    Then it should NOT accept:
+    But it should NOT accept:
       ```
       42
       ```
@@ -106,4 +121,9 @@ Feature: Basic YAML schema
     And it should NOT accept:
       ```
       foo: "I'm a string"
+      ```
+    And it should NOT accept:
+      ```
+      foo: 42
+      bar: "I'm a string"
       ```

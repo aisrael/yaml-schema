@@ -49,60 +49,66 @@ impl Validator for TypedSchema {
 
         match self.r#type {
             TypeValue::String(ref s) => match s.as_str() {
-                "string" => {
-                    let yaml_string = value.as_str().ok_or_else(|| {
-                        YamlSchemaError::GenericError(format!(
-                            "Expected a string, but got: {:?}",
-                            value
-                        ))
-                    })?;
-                    if let Some(min_length) = &self.min_length {
-                        if yaml_string.len() < *min_length {
-                            return generic_error!("String is too short!");
-                        }
-                    }
-                    if let Some(max_length) = &self.max_length {
-                        if yaml_string.len() > *max_length {
-                            return generic_error!("String is too long!");
-                        }
-                    }
-                    if let Some(regex) = &self.regex {
-                        let re = regex::Regex::new(regex).map_err(|e| {
-                            YamlSchemaError::GenericError(format!("Invalid regex: {}", e))
-                        })?;
-                        if !re.is_match(yaml_string) {
-                            return generic_error!("String does not match regex!");
-                        }
-                    }
-                    Ok(())
-                }
-                "object" => {
-                    let yaml_object = value.as_mapping().ok_or_else(|| {
-                        YamlSchemaError::GenericError(format!(
-                            "Expected a mapping, but got: {:?}",
-                            value
-                        ))
-                    })?;
-                    if let Some(properties) = &self.properties {
-                        for property in properties.keys() {
-                            if !yaml_object
-                                .contains_key(&serde_yaml::Value::String(property.clone()))
-                            {
-                                return Err(YamlSchemaError::GenericError(format!(
-                                    "Property `{}` is missing!",
-                                    property
-                                )));
-                            }
-                        }
-                    }
-                    Ok(())
-                }
-                _ => not_yet_implemented!(),
+                "string" => self.validate_string(value),
+                "object" => self.validate_object(value),
+                _ => generic_error!("Unknown type '{}'!", s),
             },
             TypeValue::Array(_) => {
                 not_yet_implemented!()
             }
         }
+    }
+}
+
+impl TypedSchema {
+    fn validate_string(&self, value: &serde_yaml::Value) -> Result<(), YamlSchemaError> {
+        let yaml_string = value.as_str().ok_or_else(|| {
+            YamlSchemaError::GenericError(format!(
+                "Expected a string, but got: {:?}",
+                value
+            ))
+        })?;
+        if let Some(min_length) = &self.min_length {
+            if yaml_string.len() < *min_length {
+                return generic_error!("String is too short!");
+            }
+        }
+        if let Some(max_length) = &self.max_length {
+            if yaml_string.len() > *max_length {
+                return generic_error!("String is too long!");
+            }
+        }
+        if let Some(regex) = &self.regex {
+            let re = regex::Regex::new(regex).map_err(|e| {
+                YamlSchemaError::GenericError(format!("Invalid regex: {}", e))
+            })?;
+            if !re.is_match(yaml_string) {
+                return generic_error!("String does not match regex!");
+            }
+        }
+        Ok(())
+    }
+
+fn validate_object(&self, value: &serde_yaml::Value) -> Result<(), YamlSchemaError> {
+        let yaml_object = value.as_mapping().ok_or_else(|| {
+            YamlSchemaError::GenericError(format!(
+                "Expected a mapping, but got: {:?}",
+                value
+            ))
+        })?;
+        if let Some(properties) = &self.properties {
+            for property in properties.keys() {
+                if !yaml_object
+                    .contains_key(&serde_yaml::Value::String(property.clone()))
+                {
+                    return Err(YamlSchemaError::GenericError(format!(
+                        "Property `{}` is missing!",
+                        property
+                    )));
+                }
+            }
+        }
+        Ok(())
     }
 }
 
