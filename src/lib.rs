@@ -50,7 +50,7 @@ pub struct TypedSchema {
     // string
     pub min_length: Option<usize>,
     pub max_length: Option<usize>,
-    pub regex: Option<String>,
+    pub pattern: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]

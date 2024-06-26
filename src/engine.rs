@@ -156,9 +156,9 @@ impl TypedSchema {
                 return generic_error!("String is too long!");
             }
         }
-        if let Some(regex) = &self.regex {
-            let re = regex::Regex::new(regex)
-                .map_err(|e| YamlSchemaError::GenericError(format!("Invalid regex: {}", e)))?;
+        if let Some(pattern) = &self.pattern {
+            let re = regex::Regex::new(pattern)
+                .map_err(|e| YamlSchemaError::GenericError(format!("Invalid regular expression pattern: {}", e)))?;
             if !re.is_match(yaml_string) {
                 return generic_error!("String does not match regex!");
             }

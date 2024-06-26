@@ -45,3 +45,26 @@ Feature: String validation
       ```
       "ABCD"
       ```
+
+  Scenario: pattern validation
+    Given a YAML schema:
+      ```
+      type: string
+      pattern: "^(\\([0-9]{3}\\))?[0-9]{3}-[0-9]{4}$"
+      ```
+    Then it should accept:
+      ```
+      "555-1212"
+      ```
+    And it should accept:
+      ```
+      "(888)555-1212"
+      ```
+    But it should NOT accept:
+      ```
+      "(888)555-1212 ext. 532"
+      ```
+    And it should NOT accept:
+      ```
+      "(800)FLOWERS"
+      ```
