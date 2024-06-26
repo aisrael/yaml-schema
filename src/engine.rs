@@ -69,7 +69,10 @@ impl TypedSchema {
                 None => generic_error!("Expected an integer, but got: {:?}", value),
             }
         } else if value.is_f64() {
-            not_yet_implemented!()
+            match value.as_f64() {
+                Some(f) => self.validate_number_f64(f),
+                None => generic_error!("Expected a float, but got: {:?}", value),
+            }
         } else {
             return generic_error!("Expected a number, but got: {:?}", value);
         }
@@ -99,6 +102,38 @@ impl TypedSchema {
                 }
                 YamlSchemaNumber::Float(max) => {
                     if (i as f64) > *max {
+                        return generic_error!("Number is too big!");
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
+    fn validate_number_f64(&self, f: f64) -> Result<(), YamlSchemaError> {
+        if let Some(minimum) = &self.minimum {
+            match minimum {
+                YamlSchemaNumber::Integer(min) => {
+                    if f < *min as f64 {
+                        return generic_error!("Number is too small!");
+                    }
+                }
+                YamlSchemaNumber::Float(min) => {
+                    if f < *min {
+                        return generic_error!("Number is too small!");
+                    }
+                }
+            }
+        }
+        if let Some(maximum) = &self.maximum {
+            match maximum {
+                YamlSchemaNumber::Integer(max) => {
+                    if f > *max as f64 {
+                        return generic_error!("Number is too big!");
+                    }
+                }
+                YamlSchemaNumber::Float(max) => {
+                    if f > *max {
                         return generic_error!("Number is too big!");
                     }
                 }

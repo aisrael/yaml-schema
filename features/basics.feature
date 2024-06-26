@@ -102,6 +102,31 @@ Feature: Basic YAML schema
       data: structure
       ```
 
+  Scenario: "type: number" should accept numbers
+    Given a YAML schema:
+      ```
+      type: number
+      ```
+    Then it should accept:
+      ```
+      42
+      ```
+    And it should accept:
+      ```
+      3.14
+      ```
+    But it should NOT accept:
+      ```
+      "I'm a string"
+      ```
+    And it should NOT accept:
+      ```
+      an:
+        - arbitrarily
+        - nested
+      data: structure
+      ```
+
   Scenario: "type: object" should validate existence of properties
     Given a YAML schema:
       ```
