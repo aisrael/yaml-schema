@@ -40,17 +40,24 @@ impl YamlSchema {
 pub struct TypedSchema {
     pub r#type: TypeValue,
     // number
-    pub minimum: Option<f64>,
-    pub maximum: Option<f64>,
-    pub exclusive_minimum: Option<f64>,
-    pub exclusive_maximum: Option<f64>,
-    pub multiple_of: Option<f64>,
+    pub minimum: Option<YamlSchemaNumber>,
+    pub maximum: Option<YamlSchemaNumber>,
+    pub exclusive_minimum: Option<YamlSchemaNumber>,
+    pub exclusive_maximum: Option<YamlSchemaNumber>,
+    pub multiple_of: Option<YamlSchemaNumber>,
     // object
     pub properties: Option<HashMap<String, YamlSchema>>,
     // string
     pub min_length: Option<usize>,
     pub max_length: Option<usize>,
     pub regex: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[serde(untagged)]
+pub enum YamlSchemaNumber {
+    Integer(i64),
+    Float(f64),
 }
 
 impl TypedSchema {

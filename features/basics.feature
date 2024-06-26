@@ -112,7 +112,6 @@ Feature: Basic YAML schema
         bar:
           type: number
       ```
-
     Then it should accept:
       ```
       foo: "I'm a string"

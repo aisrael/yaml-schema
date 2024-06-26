@@ -46,7 +46,7 @@ async fn it_should_not_accept(world: &mut BasicsWorld, step: &Step) {
     let schema = &world.yaml_schema;
     let engine = Engine::new(schema);
     match engine.evaluate(&input) {
-        Ok(_) => panic!("Expected an error!"),
+        Ok(_) => panic!("Validation succeeded when it was expected to fail!"),
         Err(e) => {
             debug!("Error: {:?}", e);
             world.yaml_schema_error = Some(e);
@@ -58,13 +58,21 @@ async fn it_should_not_accept(world: &mut BasicsWorld, step: &Step) {
 async fn the_error_should_be_a(world: &mut BasicsWorld, error: String) {
     let actual_error = world.yaml_schema_error.as_ref().unwrap();
     match error.as_str() {
-        "GenericError" => assert!(matches!(actual_error, yaml_schema::YamlSchemaError::GenericError(_))),
-        "NotYetImplemented" => assert!(matches!(actual_error, yaml_schema::YamlSchemaError::NotYetImplemented)),
-        "NotYetImplemented error" => assert!(matches!(actual_error, yaml_schema::YamlSchemaError::NotYetImplemented)),
+        "GenericError" => assert!(matches!(
+            actual_error,
+            yaml_schema::YamlSchemaError::GenericError(_)
+        )),
+        "NotYetImplemented" => assert!(matches!(
+            actual_error,
+            yaml_schema::YamlSchemaError::NotYetImplemented
+        )),
+        "NotYetImplemented error" => assert!(matches!(
+            actual_error,
+            yaml_schema::YamlSchemaError::NotYetImplemented
+        )),
         _ => panic!("Unexpected error: {:?}", error),
     };
 }
-
 
 #[then(expr = "the error message should be {string}")]
 fn the_error_message_should_be(world: &mut BasicsWorld, expected_error_message: String) {
@@ -77,13 +85,11 @@ fn the_error_message_should_be(world: &mut BasicsWorld, expected_error_message: 
                 panic!("NotYetImplemented error does not have an error message!")
             }
             _ => panic!("Unexpected error: {:?}", error),
-
         }
     } else {
         panic!("Expected an error message, but there was no error!");
     }
 }
-
 
 #[tokio::main]
 async fn main() {

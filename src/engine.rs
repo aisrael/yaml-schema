@@ -1,7 +1,7 @@
 use log::debug;
 
 use crate::error::YamlSchemaError;
-use crate::{generic_error, not_yet_implemented, TypeValue, TypedSchema, YamlSchema};
+use crate::{generic_error, not_yet_implemented, TypeValue, TypedSchema, YamlSchema, YamlSchemaNumber};
 
 pub struct Engine<'a> {
     pub schema: &'a YamlSchema,
@@ -49,8 +49,9 @@ impl Validator for TypedSchema {
 
         match self.r#type {
             TypeValue::String(ref s) => match s.as_str() {
-                "string" => self.validate_string(value),
+                "number" => self.validate_number(value),
                 "object" => self.validate_object(value),
+                "string" => self.validate_string(value),
                 _ => generic_error!("Unknown type '{}'!", s),
             },
             TypeValue::Array(_) => {
@@ -61,12 +62,54 @@ impl Validator for TypedSchema {
 }
 
 impl TypedSchema {
+    fn validate_number(&self, value: &serde_yaml::Value) -> Result<(), YamlSchemaError> {
+        if value.is_i64() {
+            match value.as_i64() {
+                Some(i) => self.validate_number_i64(i),
+                None => generic_error!("Expected an integer, but got: {:?}", value),
+            }
+        } else if value.is_f64() {
+            not_yet_implemented!()
+        } else {
+            return generic_error!("Expected a number, but got: {:?}", value);
+        }
+    }
+
+    fn validate_number_i64(&self, i: i64) -> Result<(), YamlSchemaError> {
+        if let Some(minimum) = &self.minimum {
+            match minimum {
+                YamlSchemaNumber::Integer(min) => {
+                    if i < *min {
+                        return generic_error!("Number is too small!");
+                    }
+                }
+                YamlSchemaNumber::Float(min) => {
+                    if (i as f64) < *min {
+                        return generic_error!("Number is too small!");
+                    }
+                }
+            }
+        }
+        if let Some(maximum) = &self.maximum {
+            match maximum {
+                YamlSchemaNumber::Integer(max) => {
+                    if i > *max {
+                        return generic_error!("Number is too big!");
+                    }
+                }
+                YamlSchemaNumber::Float(max) => {
+                    if (i as f64) > *max {
+                        return generic_error!("Number is too big!");
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
     fn validate_string(&self, value: &serde_yaml::Value) -> Result<(), YamlSchemaError> {
         let yaml_string = value.as_str().ok_or_else(|| {
-            YamlSchemaError::GenericError(format!(
-                "Expected a string, but got: {:?}",
-                value
-            ))
+            YamlSchemaError::GenericError(format!("Expected a string, but got: {:?}", value))
         })?;
         if let Some(min_length) = &self.min_length {
             if yaml_string.len() < *min_length {
@@ -79,9 +122,8 @@ impl TypedSchema {
             }
         }
         if let Some(regex) = &self.regex {
-            let re = regex::Regex::new(regex).map_err(|e| {
-                YamlSchemaError::GenericError(format!("Invalid regex: {}", e))
-            })?;
+            let re = regex::Regex::new(regex)
+                .map_err(|e| YamlSchemaError::GenericError(format!("Invalid regex: {}", e)))?;
             if !re.is_match(yaml_string) {
                 return generic_error!("String does not match regex!");
             }
@@ -89,23 +131,20 @@ impl TypedSchema {
         Ok(())
     }
 
-fn validate_object(&self, value: &serde_yaml::Value) -> Result<(), YamlSchemaError> {
+    fn validate_object(&self, value: &serde_yaml::Value) -> Result<(), YamlSchemaError> {
         let yaml_object = value.as_mapping().ok_or_else(|| {
-            YamlSchemaError::GenericError(format!(
-                "Expected a mapping, but got: {:?}",
-                value
-            ))
+            YamlSchemaError::GenericError(format!("Expected a mapping, but got: {:?}", value))
         })?;
         if let Some(properties) = &self.properties {
-            for property in properties.keys() {
-                if !yaml_object
-                    .contains_key(&serde_yaml::Value::String(property.clone()))
-                {
+            for (property, schema) in properties {
+                let key = &serde_yaml::Value::String(property.clone());
+                if !yaml_object.contains_key(key) {
                     return Err(YamlSchemaError::GenericError(format!(
                         "Property `{}` is missing!",
                         property
                     )));
                 }
+                schema.validate(&yaml_object[key])?;
             }
         }
         Ok(())
