@@ -1,7 +1,9 @@
 use log::debug;
 
 use crate::error::YamlSchemaError;
-use crate::{generic_error, not_yet_implemented, TypeValue, TypedSchema, YamlSchema, YamlSchemaNumber};
+use crate::{
+    generic_error, not_yet_implemented, TypeValue, TypedSchema, YamlSchema, YamlSchemaNumber,
+};
 
 pub struct Engine<'a> {
     pub schema: &'a YamlSchema,
@@ -157,8 +159,9 @@ impl TypedSchema {
             }
         }
         if let Some(pattern) = &self.pattern {
-            let re = regex::Regex::new(pattern)
-                .map_err(|e| YamlSchemaError::GenericError(format!("Invalid regular expression pattern: {}", e)))?;
+            let re = regex::Regex::new(pattern).map_err(|e| {
+                YamlSchemaError::GenericError(format!("Invalid regular expression pattern: {}", e))
+            })?;
             if !re.is_match(yaml_string) {
                 return generic_error!("String does not match regex!");
             }
