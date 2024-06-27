@@ -51,6 +51,7 @@ impl Validator for TypedSchema {
 
         match self.r#type {
             TypeValue::String(ref s) => match s.as_str() {
+                "integer" => self.validate_integer(value),
                 "number" => self.validate_number(value),
                 "object" => self.validate_object(value),
                 "string" => self.validate_string(value),
@@ -64,6 +65,22 @@ impl Validator for TypedSchema {
 }
 
 impl TypedSchema {
+    fn validate_integer(&self, value: &serde_yaml::Value) -> Result<(), YamlSchemaError> {
+        if !value.is_i64() {
+            if value.is_f64() {
+                let f = value.as_f64().unwrap();
+                if f.fract() == 0.0 {
+                    return self.validate_number_i64(f as i64);
+                } else {
+                    return generic_error!("Expected an integer, but got: {:?}", value);
+                }
+            }
+            return generic_error!("Expected an integer, but got: {:?}", value);
+        }
+        let i = value.as_i64().unwrap();
+        self.validate_number_i64(i)
+    }
+
     fn validate_number(&self, value: &serde_yaml::Value) -> Result<(), YamlSchemaError> {
         if value.is_i64() {
             match value.as_i64() {
