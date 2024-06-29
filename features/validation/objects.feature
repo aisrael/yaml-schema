@@ -140,3 +140,40 @@ Feature: Object types
       street_type: Avenue
       direction: NW
       ```
+
+  Scenario: additionalProperties as a schema
+    Given a YAML schema:
+      ```
+      type: object
+      properties:
+        number:
+          type: number
+        street_name:
+          type: string
+        street_type:
+          enum: [Street, Avenue, Boulevard]
+      additionalProperties:
+        type: string
+      ```
+    Then it should accept:
+      ```
+      number: 1600
+      street_name: Pennsylvania
+      street_type: Avenue
+      ```
+    # This is valid, since the additional property's value is a string:
+    And it should accept:
+      ```
+      number: 1600
+      street_name: Pennsylvania
+      street_type: Avenue
+      direction: NW
+      ```
+    # This is invalid, since the additional property's value is a number:
+    And it should NOT accept:
+      ```
+      number: 1600
+      street_name: Pennsylvania
+      street_type: Avenue
+      office_number: 201
+      ```

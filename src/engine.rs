@@ -201,33 +201,39 @@ impl TypedSchema {
             }
             if let Some(additional_properties) = &self.additional_properties {
                 match additional_properties {
-                    AdditionalProperties::Boolean(boolean) => {
-                        if !*boolean {
-                            for k in yaml_object.keys() {
-                                let key = k.as_str().unwrap();
-                                if !properties.contains_key(key) {
-                                    return Err(YamlSchemaError::GenericError(format!(
-                                        "Additional property '{}' is not allowed!",
-                                        key
-                                    )));
-                                }
+                    AdditionalProperties::Boolean(true) => { /* no-op */ }
+                    AdditionalProperties::Boolean(false) => {
+                        debug!("Additional properties: {:?}", additional_properties);
+                        for k in yaml_object.keys() {
+                            let key = k.as_str().unwrap();
+                            if !properties.contains_key(key) {
+                                return Err(YamlSchemaError::GenericError(format!(
+                                    "Additional property '{}' is not allowed!",
+                                    key
+                                )));
                             }
                         }
                     }
                     AdditionalProperties::Type { r#type } => {
+                        debug!("Additional properties: {:?}", additional_properties);
                         for (k, value) in yaml_object {
                             let key = k.as_str().unwrap();
+                            debug!("Key: {}", key);
                             if !properties.contains_key(key) {
                                 let allowed_types = match r#type {
                                     TypeValue::String(s) => vec![s.clone()],
                                     TypeValue::Array(v) => v.clone(),
                                 };
+                                debug!("Allowed types: {:?}", allowed_types);
                                 if !allowed_types.iter().any(|allowed_type| {
+                                    debug!("Allowed type: {}", allowed_type);
                                     let typed_schema = TypedSchema {
                                         r#type: TypeValue::String(allowed_type.clone()),
                                         ..Default::default()
                                     };
-                                    typed_schema.validate(value).is_ok()
+                                    let res = typed_schema.validate(value);
+                                    debug!("Result: {:?}", res);
+                                    res.is_ok()
                                 }) {
                                     return Err(YamlSchemaError::GenericError(format!(
                                         "Additional property '{}' is not allowed!",
