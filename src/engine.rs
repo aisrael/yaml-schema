@@ -195,13 +195,9 @@ impl TypedSchema {
         if let Some(properties) = &self.properties {
             for (property, schema) in properties {
                 let key = &serde_yaml::Value::String(property.clone());
-                if !yaml_object.contains_key(key) {
-                    return Err(YamlSchemaError::GenericError(format!(
-                        "Property `{}` is missing!",
-                        property
-                    )));
+                if yaml_object.contains_key(key) {
+                    schema.validate(&yaml_object[key])?;
                 }
-                schema.validate(&yaml_object[key])?;
             }
         }
         Ok(())
@@ -242,5 +238,45 @@ mod tests {
         )
         .unwrap();
         assert!(engine.evaluate(&yaml).is_ok());
+    }
+
+    #[test]
+    fn test_leaving_out_properties_is_valid() {
+        let object_schema = TypedSchema::object(
+            vec![
+                (
+                    "number".to_string(),
+                    YamlSchema::TypedSchema(Box::new(TypedSchema::number())),
+                ),
+                (
+                    "street_name".to_string(),
+                    YamlSchema::TypedSchema(Box::new(TypedSchema::string())),
+                ),
+                (
+                    "street_type".to_string(),
+                    YamlSchema::Enum(EnumSchema::new(vec![
+                        "Street".to_string(),
+                        "Avenue".to_string(),
+                        "Boulevard".to_string(),
+                    ])),
+                ),
+            ]
+            .into_iter()
+            .collect(),
+        );
+        let yaml_schema = YamlSchema::TypedSchema(Box::new(object_schema));
+        let engine = Engine::new(&yaml_schema);
+        let yaml = serde_yaml::from_str(
+            r#"
+            number: 1600
+            street_name: Pennsylvania
+        "#,
+        )
+        .unwrap();
+        let result = engine.evaluate(&yaml);
+        if let Err(e) = result {
+            panic!("Error: {:?}", e);
+        }
+        assert!(result.is_ok());
     }
 }

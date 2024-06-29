@@ -58,3 +58,16 @@ Feature: Object types
       street_name: Pennsylvania
       street_type: Avenue
       ```
+    # If we provide the number in the wrong type, it is invalid:
+    But it should NOT accept:
+      ```
+      number: "1600"
+      street_name: Pennsylvania
+      street_type: Avenue
+      ```
+    # By default, leaving out properties is valid
+    And it should accept:
+      ```
+      number: 1600
+      street_name: Pennsylvania
+      ```

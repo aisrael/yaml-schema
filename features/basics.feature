@@ -142,11 +142,12 @@ Feature: Basic YAML schema
       foo: "I'm a string"
       bar: 42
       ```
-    And it should NOT accept:
+    # missing properties should be allowed, unless required properties are specified
+    And it should accept:
       ```
       foo: "I'm a string"
       ```
-    And it should NOT accept:
+    But it should NOT accept:
       ```
       foo: 42
       bar: "I'm a string"

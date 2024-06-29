@@ -117,13 +117,14 @@ impl Default for TypeValue {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
-#[serde(untagged)]
-pub enum EnumValue {
-    String(String),
-    Integer(i64),
-    Float(f64),
-    Literal(Literal),
+impl EnumSchema {
+    pub fn new<V>(values: Vec<V>) -> EnumSchema
+    where
+        V: Into<serde_yaml::Value>,
+    {
+        let values = values.into_iter().map(|v| v.into()).collect();
+        EnumSchema { r#enum: values }
+    }
 }
 
 // Initialize the logger for tests
