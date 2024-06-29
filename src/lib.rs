@@ -38,6 +38,7 @@ pub struct TypedSchema {
     pub multiple_of: Option<YamlSchemaNumber>,
     // object
     pub properties: Option<HashMap<String, YamlSchema>>,
+    pub required: Option<Vec<String>>,
     // string
     pub min_length: Option<usize>,
     pub max_length: Option<usize>,

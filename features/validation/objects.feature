@@ -71,3 +71,45 @@ Feature: Object types
       number: 1600
       street_name: Pennsylvania
       ```
+
+  Scenario: Required properties
+    Given a YAML schema:
+      ```
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        address:
+          type: string
+        telephone:
+          type: string
+      required: [name, email]
+      ```
+    Then it should accept:
+      ```
+      name: William Shakespeare
+      email: bill@stratford-upon-avon.co.uk
+      ```
+    # Providing extra properties is fine, even properties not defined in the schema:
+    And it should accept:
+      ```
+      name: William Shakespeare
+      email: bill@stratford-upon-avon.co.uk
+      address: Henley Street, Stratford-upon-Avon, Warwickshire, England
+      authorship: in question
+      ```
+    # Missing the required "email" property makes the YAML document invalid:
+    But it should NOT accept:
+      ```
+      name: William Shakespeare
+      address: Henley Street, Stratford-upon-Avon, Warwickshire, England
+      ```
+    # A property with a null value is considered not being present:
+    And it should NOT accept:
+      ```
+      name: William Shakespeare
+      address: Henley Street, Stratford-upon-Avon, Warwickshire, England
+      email: null
+      ```

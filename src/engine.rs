@@ -200,6 +200,17 @@ impl TypedSchema {
                 }
             }
         }
+        if let Some(required_properties) = &self.required {
+            for required_property in required_properties {
+                let key = &serde_yaml::Value::String(required_property.clone());
+                if !yaml_object.contains_key(key) {
+                    return Err(YamlSchemaError::GenericError(format!(
+                        "Required property '{}' is missing!",
+                        required_property
+                    )));
+                }
+            }
+        }
         Ok(())
     }
 }
