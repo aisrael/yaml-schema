@@ -1,6 +1,6 @@
 # ys - yaml-schema
 
-![CI Tests](https://github.com/aisrael/yaml-schema/actions/workflows/ci-tests.yaml/badge.svg)
+[![CI Tests](https://github.com/aisrael/yaml-schema/actions/workflows/ci-tests.yaml/badge.svg)](https://github.com/aisrael/yaml-schema/actions/workflows/ci-tests.yaml)
 
 **yaml-schema** is a work-in-progress tool to validate YAML files against a YAML schema.
 
