@@ -23,16 +23,7 @@ pub enum YamlSchema {
     Empty,
     Boolean(bool),
     TypedSchema(Box<TypedSchema>),
-}
-
-impl YamlSchema {
-    pub fn new() -> YamlSchema {
-        YamlSchema::Empty
-    }
-
-    pub fn is_none(&self) -> bool {
-        self == &YamlSchema::Empty
-    }
+    Enum(EnumSchema),
 }
 
 #[derive(Debug, Default, Serialize, Deserialize, PartialEq)]
@@ -55,9 +46,31 @@ pub struct TypedSchema {
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(untagged)]
+pub enum TypeValue {
+    String(String),
+    Array(Vec<String>),
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[serde(untagged)]
 pub enum YamlSchemaNumber {
     Integer(i64),
     Float(f64),
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+pub struct EnumSchema {
+    pub r#enum: Vec<serde_yaml::Value>,
+}
+
+impl YamlSchema {
+    pub fn new() -> YamlSchema {
+        YamlSchema::Empty
+    }
+
+    pub fn is_none(&self) -> bool {
+        self == &YamlSchema::Empty
+    }
 }
 
 impl TypedSchema {
@@ -82,13 +95,6 @@ impl TypedSchema {
             ..Default::default()
         }
     }
-}
-
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
-#[serde(untagged)]
-pub enum TypeValue {
-    String(String),
-    Array(Vec<String>),
 }
 
 impl TypeValue {

@@ -40,3 +40,21 @@ Feature: Object types
       ["An", "array", "not", "an", "object"]
       ```
 
+  Scenario: object type with properties
+    Given a YAML schema:
+      ```
+      type: object
+      properties:
+        number:
+          type: number
+        street_name:
+          type: string
+        street_type:
+          enum: [Street, Avenue, Boulevard]
+      ```
+    Then it should accept:
+      ```
+      number: 1600
+      street_name: Pennsylvania
+      street_type: Avenue
+      ```

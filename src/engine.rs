@@ -2,7 +2,8 @@ use log::debug;
 
 use crate::error::YamlSchemaError;
 use crate::{
-    generic_error, not_yet_implemented, TypeValue, TypedSchema, YamlSchema, YamlSchemaNumber,
+    generic_error, not_yet_implemented, EnumSchema, TypeValue, TypedSchema, YamlSchema,
+    YamlSchemaNumber,
 };
 
 pub struct Engine<'a> {
@@ -41,6 +42,7 @@ impl Validator for YamlSchema {
                 debug!("Schema value: {:?}", typed_schema);
                 typed_schema.validate(value)
             }
+            YamlSchema::Enum(enum_schema) => enum_schema.validate(value),
         }
     }
 }
@@ -201,6 +203,15 @@ impl TypedSchema {
                 }
                 schema.validate(&yaml_object[key])?;
             }
+        }
+        Ok(())
+    }
+}
+
+impl Validator for EnumSchema {
+    fn validate(&self, value: &serde_yaml::Value) -> Result<(), YamlSchemaError> {
+        if !self.r#enum.contains(value) {
+            return generic_error!("Value is not in the enum!");
         }
         Ok(())
     }
