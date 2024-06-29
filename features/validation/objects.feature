@@ -113,3 +113,30 @@ Feature: Object types
       address: Henley Street, Stratford-upon-Avon, Warwickshire, England
       email: null
       ```
+  Scenario: Additional properties
+    Given a YAML schema:
+      ```
+      type: object
+      properties:
+        number:
+          type: number
+        street_name:
+          type: string
+        street_type:
+          enum: [Street, Avenue, Boulevard]
+      additionalProperties: false
+      ```
+    Then it should accept:
+      ```
+      number: 1600
+      street_name: Pennsylvania
+      street_type: Avenue
+      ```
+    # Since additionalProperties is false, an extra property "direction" makes the object invalid:
+    But it should NOT accept:
+      ```
+      number: 1600
+      street_name: Pennsylvania
+      street_type: Avenue
+      direction: NW
+      ```

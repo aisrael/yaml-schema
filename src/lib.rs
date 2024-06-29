@@ -39,6 +39,7 @@ pub struct TypedSchema {
     // object
     pub properties: Option<HashMap<String, YamlSchema>>,
     pub required: Option<Vec<String>>,
+    pub additional_properties: Option<AdditionalProperties>,
     // string
     pub min_length: Option<usize>,
     pub max_length: Option<usize>,
@@ -62,6 +63,13 @@ pub enum YamlSchemaNumber {
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct EnumSchema {
     pub r#enum: Vec<serde_yaml::Value>,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[serde(untagged)]
+pub enum AdditionalProperties {
+    Boolean(bool),
+    Type { r#type: TypeValue },
 }
 
 impl YamlSchema {

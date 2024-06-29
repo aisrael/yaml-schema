@@ -2,8 +2,8 @@ use log::debug;
 
 use crate::error::YamlSchemaError;
 use crate::{
-    generic_error, not_yet_implemented, EnumSchema, TypeValue, TypedSchema, YamlSchema,
-    YamlSchemaNumber,
+    generic_error, not_yet_implemented, AdditionalProperties, EnumSchema, TypeValue, TypedSchema,
+    YamlSchema, YamlSchemaNumber,
 };
 
 pub struct Engine<'a> {
@@ -197,6 +197,46 @@ impl TypedSchema {
                 let key = &serde_yaml::Value::String(property.clone());
                 if yaml_object.contains_key(key) {
                     schema.validate(&yaml_object[key])?;
+                }
+            }
+            if let Some(additional_properties) = &self.additional_properties {
+                match additional_properties {
+                    AdditionalProperties::Boolean(boolean) => {
+                        if !*boolean {
+                            for k in yaml_object.keys() {
+                                let key = k.as_str().unwrap();
+                                if !properties.contains_key(key) {
+                                    return Err(YamlSchemaError::GenericError(format!(
+                                        "Additional property '{}' is not allowed!",
+                                        key
+                                    )));
+                                }
+                            }
+                        }
+                    }
+                    AdditionalProperties::Type { r#type } => {
+                        for (k, value) in yaml_object {
+                            let key = k.as_str().unwrap();
+                            if !properties.contains_key(key) {
+                                let allowed_types = match r#type {
+                                    TypeValue::String(s) => vec![s.clone()],
+                                    TypeValue::Array(v) => v.clone(),
+                                };
+                                if !allowed_types.iter().any(|allowed_type| {
+                                    let typed_schema = TypedSchema {
+                                        r#type: TypeValue::String(allowed_type.clone()),
+                                        ..Default::default()
+                                    };
+                                    typed_schema.validate(value).is_ok()
+                                }) {
+                                    return Err(YamlSchemaError::GenericError(format!(
+                                        "Additional property '{}' is not allowed!",
+                                        key
+                                    )));
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
