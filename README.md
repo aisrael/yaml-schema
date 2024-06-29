@@ -56,12 +56,13 @@ Should fail with exit code 1
 
 **yaml-schema** uses [Cucumber](https://cucumber-rs.github.io/cucumber/main/) to specify and test features:
 
-- [CLI usage](features/cli.feature)
-- [Basic features](features/basics.feature)
-- [String validation](features/validation/strings.feature)
-- [Numeric types](features/validation/numbers.feature)
+- [CLI usage](https://github.com/aisrael/yaml-schema/blob/main/features/cli.feature)
+- [Basic features](https://github.com/aisrael/yaml-schema/blob/main/features/cli.feature)
+- [String validation](https://github.com/aisrael/yaml-schema/blob/main/features/validation/strings.feature)
+- [Numeric types](https://github.com/aisrael/yaml-schema/blob/main/features/validation/numbers.feature)
+- [Object types](https://github.com/aisrael/yaml-schema/blob/main/features/validation/objects.feature)
 
-See the [features](features/) folder all examples.
+See the [features](https://github.com/aisrael/yaml-schema/blob/main/features/) folder all examples.
 
 ## Installation
 
