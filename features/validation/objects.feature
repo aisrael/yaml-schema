@@ -177,3 +177,37 @@ Feature: Object types
       street_type: Avenue
       office_number: 201
       ```
+
+  Scenario: Pattern properties
+    Given a YAML schema:
+      ```
+      type: object
+      patternProperties:
+        ^S_:
+          type: string
+        ^I_:
+          type: integer
+      ```
+    Then it should accept:
+      ```
+      S_25: This is a string
+      ```
+    And it should accept:
+      ```
+      I_0: 42
+      ```
+    # If the name starts with S_, it must be a string
+    But it should NOT accept:
+      ```
+      S_0: 42
+      ```
+    # If the name starts with I_, it must be an integer
+    And it should NOT accept:
+      ```
+      I_42: This is a string
+      ```
+    # This is a key that doesn't match any pattern
+    But it should accept:
+      ```
+      keyword: value
+      ```
