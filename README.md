@@ -65,12 +65,12 @@ See the [features](features/) folder all examples.
 
 ## Installation
 
-Currently, **yaml-schema** requires Git, Rust and Cargo to build and install locally: [https://doc.rust-lang.org/cargo/](https://doc.rust-lang.org/cargo/)
+Currently, **yaml-schema** requires Git, Rust and Cargo to build and install: [https://doc.rust-lang.org/cargo/](https://doc.rust-lang.org/cargo/)
 
-To install the `ys` binary, simply check out this repository, then in it issue the command:
+To install the `ys` binary, simply issue the command:
 
 ```
-cargo install --path .
+cargo install yaml-schema
 ```
 
 That should build and install the executable at `$HOME/.cargo/bin/ys` (which should be in your PATH)
