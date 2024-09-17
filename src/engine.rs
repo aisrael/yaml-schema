@@ -27,7 +27,7 @@ pub trait Validator {
 
 impl Validator for YamlSchema {
     fn validate(&self, value: &serde_yaml::Value) -> Result<(), YamlSchemaError> {
-        debug!("self: {:?}", self);
+        debug!("self: {}", self);
         debug!("Validating value: {:?}", value);
         match self {
             YamlSchema::Empty => Ok(()),
@@ -39,7 +39,7 @@ impl Validator for YamlSchema {
                 }
             }
             YamlSchema::TypedSchema(typed_schema) => {
-                debug!("Schema value: {:?}", typed_schema);
+                debug!("Schema value: {}", typed_schema);
                 typed_schema.validate(value)
             }
             YamlSchema::Enum(enum_schema) => enum_schema.validate(value),
@@ -163,6 +163,7 @@ impl TypedSchema {
         Ok(())
     }
 
+    /// Validate the string according to the schema rules
     fn validate_string(&self, value: &serde_yaml::Value) -> Result<(), YamlSchemaError> {
         let yaml_string = value.as_str().ok_or_else(|| {
             YamlSchemaError::GenericError(format!("Expected a string, but got: {:?}", value))
@@ -188,20 +189,88 @@ impl TypedSchema {
         Ok(())
     }
 
+    /// Validate the object according to the schema rules
     fn validate_object(&self, value: &serde_yaml::Value) -> Result<(), YamlSchemaError> {
-        let yaml_object = value.as_mapping().ok_or_else(|| {
+        let mapping = value.as_mapping().ok_or_else(|| {
             YamlSchemaError::GenericError(format!("Expected a mapping, but got: {:?}", value))
         })?;
-        if let Some(properties) = &self.properties {
-            self.validate_object_properties(properties, yaml_object)?;
+
+        for (k, value) in mapping {
+            let key = match k {
+                serde_yaml::Value::String(s) => s.clone(),
+                _ => k.as_str().unwrap_or_default().to_string(),
+            };
+            // First, we check the explicitly defined properties, and validate against it if found
+            if let Some(properties) = &self.properties {
+                if properties.contains_key(&key) {
+                    match properties[&key].validate(value) {
+                        Err(e) => return Err(e),
+                        Ok(_) => continue,
+                    }
+                }
+            }
+            // Then, we check if additional properties are allowed or not
+            if let Some(additional_properties) = &self.additional_properties {
+                match additional_properties {
+                    // if additional_properties: true, then any additional properties are allowed
+                    AdditionalProperties::Boolean(true) => { /* no-op */ }
+                    // if additional_properties: false, then no additional properties are allowed
+                    AdditionalProperties::Boolean(false) => {
+                        return Err(YamlSchemaError::GenericError(format!(
+                            "Additional property '{}' is not allowed!",
+                            key
+                        )));
+                    }
+                    // if additional_properties: { type: <string> } or { type: [<string>] }
+                    // then we validate the additional property against the type schema
+                    AdditionalProperties::Type { r#type } => {
+                        // get the list of allowed types
+                        let allowed_types = r#type.as_list_of_allowed_types();
+                        // check if the value is _NOT_ valid for any of the allowed types
+                        let is_invalid = allowed_types.iter().any(|allowed_type| {
+                            let typed_schema = TypedSchema {
+                                r#type: TypeValue::String(allowed_type.clone()),
+                                ..Default::default()
+                            };
+                            debug!(
+                                "Validating additional property '{}' with schema: {:?}",
+                                key, typed_schema
+                            );
+                            let res = typed_schema.validate(value);
+                            !res.is_ok()
+                        });
+                        // if the value is not valid for any of the allowed types, then we return an error immediately
+                        if is_invalid {
+                            return Err(YamlSchemaError::GenericError(format!(
+                                "Additional property '{}' is not allowed. No allowed types matched!",
+                                key
+                            )));
+                        }
+                    }
+                }
+            }
+            if let Some(pattern_properties) = &self.pattern_properties {
+                for (pattern, schema) in pattern_properties {
+                    // TODO: compile the regex once instead of every time we're evaluating
+                    let re = regex::Regex::new(pattern).map_err(|e| {
+                        YamlSchemaError::GenericError(format!(
+                            "Invalid regular expression pattern: {}",
+                            e
+                        ))
+                    })?;
+                    if re.is_match(key.as_str()) {
+                        if let Err(e) = schema.validate(value) {
+                            return Err(e);
+                        }
+                    }
+                }
+            }
         }
-        if let Some(pattern_properties) = &self.pattern_properties {
-            self.validate_object_pattern_properties(pattern_properties, yaml_object)?;
-        }
-        if let Some(required_properties) = &self.required {
-            for required_property in required_properties {
-                let key = &serde_yaml::Value::String(required_property.clone());
-                if !yaml_object.contains_key(key) {
+
+        // Validate required properties
+        if let Some(required) = &self.required {
+            for required_property in required {
+                if !mapping.contains_key(&serde_yaml::Value::String(required_property.clone())) {
                     return Err(YamlSchemaError::GenericError(format!(
                         "Required property '{}' is missing!",
                         required_property
@@ -209,82 +278,7 @@ impl TypedSchema {
                 }
             }
         }
-        Ok(())
-    }
 
-    fn validate_object_properties(
-        &self,
-        properties: &std::collections::HashMap<String, YamlSchema>,
-        yaml_object: &serde_yaml::Mapping,
-    ) -> Result<(), YamlSchemaError> {
-        for (property, schema) in properties {
-            let key = &serde_yaml::Value::String(property.clone());
-            if yaml_object.contains_key(key) {
-                schema.validate(&yaml_object[key])?;
-            }
-        }
-        if let Some(additional_properties) = &self.additional_properties {
-            match additional_properties {
-                AdditionalProperties::Boolean(true) => { /* no-op */ }
-                AdditionalProperties::Boolean(false) => {
-                    for k in yaml_object.keys() {
-                        let key = k.as_str().unwrap();
-                        if !properties.contains_key(key) {
-                            return Err(YamlSchemaError::GenericError(format!(
-                                "Additional property '{}' is not allowed!",
-                                key
-                            )));
-                        }
-                    }
-                }
-                AdditionalProperties::Type { r#type } => {
-                    for (k, value) in yaml_object {
-                        let key = k.as_str().unwrap();
-                        if !properties.contains_key(key) {
-                            let allowed_types = match r#type {
-                                TypeValue::String(s) => vec![s.clone()],
-                                TypeValue::Array(v) => v.clone(),
-                            };
-                            if !allowed_types.iter().any(|allowed_type| {
-                                let typed_schema = TypedSchema {
-                                    r#type: TypeValue::String(allowed_type.clone()),
-                                    ..Default::default()
-                                };
-                                let res = typed_schema.validate(value);
-                                res.is_ok()
-                            }) {
-                                return Err(YamlSchemaError::GenericError(format!(
-                                    "Additional property '{}' is not allowed!",
-                                    key
-                                )));
-                            }
-                        }
-                    }
-                }
-            }
-        };
-        Ok(())
-    }
-
-    fn validate_object_pattern_properties(
-        &self,
-        pattern_properties: &std::collections::HashMap<String, YamlSchema>,
-        yaml_object: &serde_yaml::Mapping,
-    ) -> Result<(), YamlSchemaError> {
-        for (k, value) in yaml_object {
-            let key = k.as_str().unwrap();
-            for (pattern, schema) in pattern_properties {
-                let re = regex::Regex::new(pattern).map_err(|e| {
-                    YamlSchemaError::GenericError(format!(
-                        "Invalid regular expression pattern: {}",
-                        e
-                    ))
-                })?;
-                if re.is_match(key) {
-                    schema.validate(value)?;
-                }
-            }
-        }
         Ok(())
     }
 }
@@ -323,6 +317,35 @@ mod tests {
         )
         .unwrap();
         assert!(engine.evaluate(&yaml).is_ok());
+    }
+
+    #[test]
+    fn test_additional_properties_are_valid() {
+        let additional_properties = AdditionalProperties::Type {
+            r#type: TypeValue::String("string".to_string()),
+        };
+        let schema = TypedSchema {
+            additional_properties: Some(additional_properties),
+            ..Default::default()
+        };
+        let yaml_schema = YamlSchema::typed_schema(schema);
+        let engine = Engine::new(&yaml_schema);
+        let yaml = serde_yaml::from_str(
+            r#"
+            name: "John Doe"
+        "#,
+        )
+        .unwrap();
+        assert!(engine.evaluate(&yaml).is_ok());
+
+        let invalid_yaml = serde_yaml::from_str(
+            r#"
+            age: 42
+        "#,
+        )
+        .unwrap();
+        let invalid_result = engine.evaluate(&invalid_yaml);
+        assert!(invalid_result.is_err());
     }
 
     #[test]

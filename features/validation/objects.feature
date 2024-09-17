@@ -113,6 +113,42 @@ Feature: Object types
       address: Henley Street, Stratford-upon-Avon, Warwickshire, England
       email: null
       ```
+
+
+  Scenario: Pattern properties
+    Given a YAML schema:
+      ```
+      type: object
+      patternProperties:
+        ^S_:
+          type: string
+        ^I_:
+          type: integer
+      ```
+    Then it should accept:
+      ```
+      S_25: This is a string
+      ```
+    And it should accept:
+      ```
+      I_0: 42
+      ```
+    # If the name starts with S_, it must be a string
+    But it should NOT accept:
+      ```
+      S_0: 42
+      ```
+    # If the name starts with I_, it must be an integer
+    And it should NOT accept:
+      ```
+      I_42: This is a string
+      ```
+    # This is a key that doesn't match any pattern
+    But it should accept:
+      ```
+      keyword: value
+      ```
+
   Scenario: Additional properties
     Given a YAML schema:
       ```
@@ -169,7 +205,7 @@ Feature: Object types
       street_type: Avenue
       direction: NW
       ```
-    # This is invalid, since the additional property's value is a number:
+    # This is invalid, since the additional property's value is not a string:
     And it should NOT accept:
       ```
       number: 1600
@@ -178,36 +214,32 @@ Feature: Object types
       office_number: 201
       ```
 
-  Scenario: Pattern properties
+  Scenario: Additional properties with properties and patternProperties
     Given a YAML schema:
       ```
       type: object
+      properties:
+        builtin:
+          type: number
       patternProperties:
         ^S_:
           type: string
         ^I_:
           type: integer
+      additionalProperties:
+        type: string
       ```
     Then it should accept:
       ```
-      S_25: This is a string
+      builtin: 42
       ```
+    # This is a key that doesn't match any of the regular expressions
     And it should accept:
-      ```
-      I_0: 42
-      ```
-    # If the name starts with S_, it must be a string
-    But it should NOT accept:
-      ```
-      S_0: 42
-      ```
-    # If the name starts with I_, it must be an integer
-    And it should NOT accept:
-      ```
-      I_42: This is a string
-      ```
-    # This is a key that doesn't match any pattern
-    But it should accept:
       ```
       keyword: value
       ```
+    # It must be a string, not an integer
+    And it should NOT accept:
+      ```
+      keyword: 42
+      ```      

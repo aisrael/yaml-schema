@@ -46,7 +46,10 @@ fn main() {
     }
 }
 
+/// The `ys validate` command
 fn command_validate(opts: Opts) -> Result<(), anyhow::Error> {
+    // Currently, we only support a single schema file
+    // TODO: Support multiple schema files
     let schema_file = std::fs::File::open(opts.schemas.first().unwrap())?;
     let schema: YamlSchema = serde_yaml::from_reader(schema_file)?;
     let engine = Engine::new(&schema);
