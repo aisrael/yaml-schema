@@ -237,7 +237,7 @@ impl TypedSchema {
                                 key, typed_schema
                             );
                             let res = typed_schema.validate(value);
-                            !res.is_ok()
+                            res.is_err()
                         });
                         // if the value is not valid for any of the allowed types, then we return an error immediately
                         if is_invalid {
@@ -259,9 +259,7 @@ impl TypedSchema {
                         ))
                     })?;
                     if re.is_match(key.as_str()) {
-                        if let Err(e) = schema.validate(value) {
-                            return Err(e);
-                        }
+                        schema.validate(value)?
                     }
                 }
             }
@@ -270,7 +268,7 @@ impl TypedSchema {
         // Validate required properties
         if let Some(required) = &self.required {
             for required_property in required {
-                if !mapping.contains_key(&serde_yaml::Value::String(required_property.clone())) {
+                if !mapping.contains_key(required_property) {
                     return Err(YamlSchemaError::GenericError(format!(
                         "Required property '{}' is missing!",
                         required_property
