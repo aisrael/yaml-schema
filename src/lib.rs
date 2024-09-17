@@ -48,6 +48,7 @@ pub struct TypedSchema {
     pub min_length: Option<usize>,
     pub max_length: Option<usize>,
     pub pattern: Option<String>,
+    pub property_names: Option<PropertyNamesValue>,
 }
 
 /// A type value is either a string or an array of strings
@@ -75,6 +76,11 @@ pub struct EnumSchema {
 pub enum AdditionalProperties {
     Boolean(bool),
     Type { r#type: TypeValue },
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+pub struct PropertyNamesValue {
+    pub pattern: String,
 }
 
 impl YamlSchema {

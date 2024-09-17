@@ -263,6 +263,21 @@ impl TypedSchema {
                     }
                 }
             }
+            if let Some(property_names) = &self.property_names {
+                let re = regex::Regex::new(&property_names.pattern).map_err(|e| {
+                    YamlSchemaError::GenericError(format!(
+                        "Invalid regular expression pattern: {}",
+                        e
+                    ))
+                })?;
+                debug!("Regex for property names: {}", re.as_str());
+                if !re.is_match(key.as_str()) {
+                    return Err(YamlSchemaError::GenericError(format!(
+                        "Property name '{}' does not match pattern specified in `propertyNames`!",
+                        key
+                    )));
+                }
+            }
         }
 
         // Validate required properties

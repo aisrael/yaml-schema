@@ -72,49 +72,6 @@ Feature: Object types
       street_name: Pennsylvania
       ```
 
-  Scenario: Required properties
-    Given a YAML schema:
-      ```
-      type: object
-      properties:
-        name:
-          type: string
-        email:
-          type: string
-        address:
-          type: string
-        telephone:
-          type: string
-      required: [name, email]
-      ```
-    Then it should accept:
-      ```
-      name: William Shakespeare
-      email: bill@stratford-upon-avon.co.uk
-      ```
-    # Providing extra properties is fine, even properties not defined in the schema:
-    And it should accept:
-      ```
-      name: William Shakespeare
-      email: bill@stratford-upon-avon.co.uk
-      address: Henley Street, Stratford-upon-Avon, Warwickshire, England
-      authorship: in question
-      ```
-    # Missing the required "email" property makes the YAML document invalid:
-    But it should NOT accept:
-      ```
-      name: William Shakespeare
-      address: Henley Street, Stratford-upon-Avon, Warwickshire, England
-      ```
-    # A property with a null value is considered not being present:
-    And it should NOT accept:
-      ```
-      name: William Shakespeare
-      address: Henley Street, Stratford-upon-Avon, Warwickshire, England
-      email: null
-      ```
-
-
   Scenario: Pattern properties
     Given a YAML schema:
       ```
@@ -214,7 +171,7 @@ Feature: Object types
       office_number: 201
       ```
 
-  Scenario: Additional properties with properties and patternProperties
+  Scenario: Additional properties with properties and patternProperties ZZZ
     Given a YAML schema:
       ```
       type: object
@@ -242,4 +199,62 @@ Feature: Object types
     And it should NOT accept:
       ```
       keyword: 42
-      ```      
+      ```
+
+  Scenario: Required properties
+    Given a YAML schema:
+      ```
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        address:
+          type: string
+        telephone:
+          type: string
+      required: [name, email]
+      ```
+    Then it should accept:
+      ```
+      name: William Shakespeare
+      email: bill@stratford-upon-avon.co.uk
+      ```
+    # Providing extra properties is fine, even properties not defined in the schema:
+    And it should accept:
+      ```
+      name: William Shakespeare
+      email: bill@stratford-upon-avon.co.uk
+      address: Henley Street, Stratford-upon-Avon, Warwickshire, England
+      authorship: in question
+      ```
+    # Missing the required "email" property makes the YAML document invalid:
+    But it should NOT accept:
+      ```
+      name: William Shakespeare
+      address: Henley Street, Stratford-upon-Avon, Warwickshire, England
+      ```
+    # A property with a null value is considered not being present:
+    And it should NOT accept:
+      ```
+      name: William Shakespeare
+      address: Henley Street, Stratford-upon-Avon, Warwickshire, England
+      email: null
+      ```
+
+  Scenario: Property names
+    Given a YAML schema:
+      ```
+      type: object
+      propertyNames:
+        pattern: "^[A-Za-z_][A-Za-z0-9_]*$"
+      ```
+    Then it should accept:
+      ```
+      _a_proper_token_001: "value"
+      ```
+    But it should NOT accept:
+      ```
+      -001 invalid: "value"
+      ```
