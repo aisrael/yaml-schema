@@ -44,13 +44,15 @@ pub struct TypedSchema {
     pub required: Option<Vec<String>>,
     pub additional_properties: Option<AdditionalProperties>,
     pub pattern_properties: Option<HashMap<String, YamlSchema>>,
+    pub property_names: Option<PropertyNamesValue>,
+    pub min_properties: Option<usize>,
+    pub max_properties: Option<usize>,
     // string
     pub min_length: Option<usize>,
     pub max_length: Option<usize>,
     pub pattern: Option<String>,
-    pub property_names: Option<PropertyNamesValue>,
-    pub min_properties: Option<usize>,
-    pub max_properties: Option<usize>,
+    // array
+    pub items: Option<YamlSchema>,
 }
 
 /// A type value is either a string or an array of strings

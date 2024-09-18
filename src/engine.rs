@@ -320,7 +320,12 @@ impl TypedSchema {
             return generic_error!("Expected an array, but got: {:?}", value);
         }
 
-        // Add more array validation logic here if needed
+        // validate array items
+        if let Some(items) = &self.items {
+            for item in value.as_sequence().unwrap() {
+                items.validate(item)?;
+            }
+        }
         Ok(())
     }
 }

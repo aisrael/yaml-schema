@@ -23,3 +23,33 @@ Feature: Arrays
       ```
       Not: "an array"
       ```
+
+  Scenario: Array items
+    Given a YAML schema:
+      ```
+      type: array
+      items:
+        type: number
+      ```
+    Then it should accept:
+      ```
+      - 1
+      - 2
+      - 3
+      - 4
+      - 5
+      ```
+    # A single non-number causes the entire array to be invalid
+    But it should NOT accept:
+      ```
+      - 1
+      - 2
+      - "3"
+      - 4
+      - 5
+      ```
+    # The empty array is always valid
+    And it should accept:
+      ```
+      []
+      ```
