@@ -53,6 +53,7 @@ pub struct TypedSchema {
     pub pattern: Option<String>,
     // array
     pub items: Option<YamlSchema>,
+    pub prefix_items: Option<Vec<YamlSchema>>,
 }
 
 /// A type value is either a string or an array of strings

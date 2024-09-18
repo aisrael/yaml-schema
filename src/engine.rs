@@ -326,6 +326,18 @@ impl TypedSchema {
                 items.validate(item)?;
             }
         }
+
+        // validate prefix items
+        if let Some(prefix_items) = &self.prefix_items {
+            debug!("Validating prefix items: {:?}", prefix_items);
+            for (i, item) in value.as_sequence().unwrap().iter().enumerate() {
+                if i >= prefix_items.len() {
+                    break;
+                }
+                prefix_items[i].validate(item)?;
+            }
+        }
+
         Ok(())
     }
 }
