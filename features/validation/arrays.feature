@@ -106,3 +106,83 @@ Feature: Arrays
       - NW
       - Washington
       ```
+
+  Scenario: Additional Items
+    Given a YAML schema:
+      ```
+      type: array
+      prefixItems:
+        - type: number
+        - type: string
+        - enum:
+          - Street
+          - Avenue
+          - Boulevard
+        - enum:
+          - NW
+          - NE
+          - SW
+          - SE
+      items: false
+      ```
+    Then it should accept:
+      ```
+      - 1600
+      - Pennsylvania
+      - Avenue
+      - NW
+      ```
+    # It's ok to not provide all of the items
+    And it should accept:
+      ```
+      - 1600
+      - Pennsylvania
+      - Avenue
+      ```
+    # But since `items` is `false`, we can't provide extra items
+    But it should NOT accept:
+      ```
+      - 1600
+      - Pennsylvania
+      - Avenue
+      - NW
+      - Washington
+      ```
+
+  Scenario: Additional Items with schema
+    Given a YAML schema:
+      ```
+      type: array
+      prefixItems:
+        - type: number
+        - type: string
+        - enum:
+          - Street
+          - Avenue
+          - Boulevard
+        - enum:
+          - NW
+          - NE
+          - SW
+          - SE
+      items:
+        type: string
+      ```
+    # Extra string items are ok
+    And it should accept:
+      ```
+      - 1600
+      - Pennsylvania
+      - Avenue
+      - NW
+      - Washington
+      ```
+    # But not anything else
+    But it should NOT accept:
+      ```
+      - 1600
+      - Pennsylvania
+      - Avenue
+      - NW
+      - 20500
+      ```

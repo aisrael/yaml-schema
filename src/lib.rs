@@ -52,7 +52,7 @@ pub struct TypedSchema {
     pub max_length: Option<usize>,
     pub pattern: Option<String>,
     // array
-    pub items: Option<YamlSchema>,
+    pub items: Option<ArrayItemsValue>,
     pub prefix_items: Option<Vec<YamlSchema>>,
 }
 
@@ -86,6 +86,13 @@ pub enum AdditionalProperties {
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct PropertyNamesValue {
     pub pattern: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[serde(untagged)]
+pub enum ArrayItemsValue {
+    TypedSchema(Box<TypedSchema>),
+    Boolean(bool),
 }
 
 impl YamlSchema {
@@ -196,6 +203,14 @@ where
     format!("{{ {} }}", items.join(", "))
 }
 
+fn format_vec<V>(vec: &Vec<V>) -> String
+where
+    V: fmt::Display,
+{
+    let items: Vec<String> = vec.iter().map(|v| format!("{}", v)).collect();
+    format!("[{}]", items.join(", "))
+}
+
 /// A type value is either a string or an array of strings
 impl TypeValue {
     pub fn number() -> TypeValue {
@@ -267,7 +282,16 @@ impl EnumSchema {
 
 impl fmt::Display for EnumSchema {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self.r#enum)
+        write!(f, "Enum {:?}", self.r#enum)
+    }
+}
+
+impl fmt::Display for ArrayItemsValue {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ArrayItemsValue::TypedSchema(s) => write!(f, "{}", s),
+            ArrayItemsValue::Boolean(b) => write!(f, "{}", b),
+        }
     }
 }
 

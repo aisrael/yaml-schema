@@ -2,8 +2,8 @@ use log::debug;
 
 use crate::error::YamlSchemaError;
 use crate::{
-    generic_error, not_yet_implemented, AdditionalProperties, EnumSchema, TypeValue, TypedSchema,
-    YamlSchema, YamlSchemaNumber,
+    format_vec, generic_error, not_yet_implemented, AdditionalProperties, ArrayItemsValue,
+    EnumSchema, TypeValue, TypedSchema, YamlSchema, YamlSchemaNumber,
 };
 
 pub struct Engine<'a> {
@@ -322,19 +322,50 @@ impl TypedSchema {
 
         // validate array items
         if let Some(items) = &self.items {
-            for item in value.as_sequence().unwrap() {
-                items.validate(item)?;
+            match items {
+                ArrayItemsValue::TypedSchema(typed_schema) => {
+                    for item in value.as_sequence().unwrap() {
+                        typed_schema.validate(item)?;
+                    }
+                }
+                ArrayItemsValue::Boolean(true) => { /* no-op */ }
+                ArrayItemsValue::Boolean(false) => {
+                    if self.prefix_items.is_none() {
+                        return Err(YamlSchemaError::GenericError(
+                            "Array items are not allowed!".to_string(),
+                        ));
+                    }
+                }
             }
         }
 
         // validate prefix items
         if let Some(prefix_items) = &self.prefix_items {
-            debug!("Validating prefix items: {:?}", prefix_items);
+            debug!("Validating prefix items: {}", format_vec(prefix_items));
             for (i, item) in value.as_sequence().unwrap().iter().enumerate() {
-                if i >= prefix_items.len() {
-                    break;
+                if i < prefix_items.len() {
+                    debug!(
+                        "Validating prefix item {} with schema: {}",
+                        i, prefix_items[i]
+                    );
+                    prefix_items[i].validate(item)?;
+                } else {
+                    if let Some(items) = &self.items {
+                        match items {
+                            ArrayItemsValue::TypedSchema(typed_schema) => {
+                                typed_schema.validate(item)?;
+                            }
+                            ArrayItemsValue::Boolean(true) => { /* no-op */ }
+                            ArrayItemsValue::Boolean(false) => {
+                                return Err(YamlSchemaError::GenericError(
+                                    "Additional array items are not allowed!".to_string(),
+                                ));
+                            }
+                        }
+                    } else {
+                        break;
+                    }
                 }
-                prefix_items[i].validate(item)?;
             }
         }
 
