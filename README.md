@@ -2,7 +2,7 @@
 
 [![CI Tests](https://github.com/aisrael/yaml-schema/actions/workflows/ci-tests.yaml/badge.svg)](https://github.com/aisrael/yaml-schema/actions/workflows/ci-tests.yaml)
 
-**yaml-schema** is a work-in-progress tool to validate YAML files against a YAML schema.
+**yaml-schema** is a tool to validate YAML files against a YAML schema.
 
 The YAML Schema specification is based on JSON Schema ([https://json-schema.org/](https://json-schema.org/)), but expressed as YAML.
 
@@ -61,8 +61,9 @@ Should fail with exit code 1
 - [String validation](https://github.com/aisrael/yaml-schema/blob/main/features/validation/strings.feature)
 - [Numeric types](https://github.com/aisrael/yaml-schema/blob/main/features/validation/numbers.feature)
 - [Object types](https://github.com/aisrael/yaml-schema/blob/main/features/validation/objects.feature)
+- [Arrays](https://github.com/aisrael/yaml-schema/blob/main/features/validation/arrays.feature)
 
-See the [features](https://github.com/aisrael/yaml-schema/blob/main/features/) folder all examples.
+See the [features](https://github.com/aisrael/yaml-schema/blob/main/features/) folder for all examples.
 
 ## Installation
 
