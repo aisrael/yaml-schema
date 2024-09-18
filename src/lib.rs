@@ -49,6 +49,8 @@ pub struct TypedSchema {
     pub max_length: Option<usize>,
     pub pattern: Option<String>,
     pub property_names: Option<PropertyNamesValue>,
+    pub min_properties: Option<usize>,
+    pub max_properties: Option<usize>,
 }
 
 /// A type value is either a string or an array of strings

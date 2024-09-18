@@ -1,6 +1,6 @@
 Feature: Object types
 
-  Scenario: object type
+  Scenario: object
     Given a YAML schema:
       ```
       type: object
@@ -40,7 +40,7 @@ Feature: Object types
       ["An", "array", "not", "an", "object"]
       ```
 
-  Scenario: object type with properties
+  Scenario: properties
     Given a YAML schema:
       ```
       type: object
@@ -71,6 +71,19 @@ Feature: Object types
       number: 1600
       street_name: Pennsylvania
       ```
+    # By extension, even an empty object is valid
+    And it should accept:
+      ```
+      {}
+      ```
+    # By default, providing additional properties is valid
+    And it should accept:
+      ```
+      number: 1600
+      street_name: Pennsylvania
+      street_type: Avenue
+      direction: NW
+      ```
 
   Scenario: Pattern properties
     Given a YAML schema:
@@ -100,7 +113,7 @@ Feature: Object types
       ```
       I_42: This is a string
       ```
-    # This is a key that doesn't match any pattern
+    # This is a key that doesn't match any of the regular expressions
     But it should accept:
       ```
       keyword: value
@@ -171,7 +184,7 @@ Feature: Object types
       office_number: 201
       ```
 
-  Scenario: Additional properties with properties and patternProperties ZZZ
+  Scenario: Additional properties with properties and patternProperties
     Given a YAML schema:
       ```
       type: object
@@ -214,7 +227,9 @@ Feature: Object types
           type: string
         telephone:
           type: string
-      required: [name, email]
+      required:
+        - name
+        - email
       ```
     Then it should accept:
       ```
@@ -257,4 +272,38 @@ Feature: Object types
     But it should NOT accept:
       ```
       -001 invalid: "value"
+      ```
+
+  Scenario: Size
+    Given a YAML schema:
+      ```
+      type: object
+      minProperties: 2
+      maxProperties: 3
+      ```
+    Then it should NOT accept:
+      ```
+      {}
+      ```
+    And it should NOT accept:
+      ```
+      a: 0
+      ```
+    But it should accept:
+      ```
+      a: 0
+      b: 1
+      ```
+    And it should accept:
+      ```
+      a: 0
+      b: 1
+      c: 2
+      ```
+    But it should NOT accept:
+      ```
+      a: 0
+      b: 1
+      c: 2
+      d: 3
       ```

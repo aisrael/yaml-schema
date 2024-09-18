@@ -292,6 +292,25 @@ impl TypedSchema {
             }
         }
 
+        // Validate minProperties
+        if let Some(min_properties) = &self.min_properties {
+            if mapping.len() < *min_properties {
+                return Err(YamlSchemaError::GenericError(format!(
+                    "Object has too few properties! Minimum is {}!",
+                    min_properties
+                )));
+            }
+        }
+        // Validate maxProperties
+        if let Some(max_properties) = &self.max_properties {
+            if mapping.len() > *max_properties {
+                return Err(YamlSchemaError::GenericError(format!(
+                    "Object has too many properties! Maximum is {}!",
+                    max_properties
+                )));
+            }
+        }
+
         Ok(())
     }
 }
