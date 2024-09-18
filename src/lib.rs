@@ -203,7 +203,7 @@ where
     format!("{{ {} }}", items.join(", "))
 }
 
-fn format_vec<V>(vec: &Vec<V>) -> String
+fn format_vec<V>(vec: &[V]) -> String
 where
     V: fmt::Display,
 {

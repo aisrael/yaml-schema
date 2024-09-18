@@ -349,22 +349,20 @@ impl TypedSchema {
                         i, prefix_items[i]
                     );
                     prefix_items[i].validate(item)?;
-                } else {
-                    if let Some(items) = &self.items {
-                        match items {
-                            ArrayItemsValue::TypedSchema(typed_schema) => {
-                                typed_schema.validate(item)?;
-                            }
-                            ArrayItemsValue::Boolean(true) => { /* no-op */ }
-                            ArrayItemsValue::Boolean(false) => {
-                                return Err(YamlSchemaError::GenericError(
-                                    "Additional array items are not allowed!".to_string(),
-                                ));
-                            }
+                } else if let Some(items) = &self.items {
+                    match items {
+                        ArrayItemsValue::TypedSchema(typed_schema) => {
+                            typed_schema.validate(item)?;
                         }
-                    } else {
-                        break;
+                        ArrayItemsValue::Boolean(true) => { /* no-op */ }
+                        ArrayItemsValue::Boolean(false) => {
+                            return Err(YamlSchemaError::GenericError(
+                                "Additional array items are not allowed!".to_string(),
+                            ));
+                        }
                     }
+                } else {
+                    break;
                 }
             }
         }
