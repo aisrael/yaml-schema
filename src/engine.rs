@@ -412,7 +412,7 @@ mod tests {
     #[test]
     fn test_additional_properties_are_valid() {
         let additional_properties = AdditionalProperties::Type {
-            r#type: TypeValue::String("string".to_string()),
+            r#type: TypeValue::string(),
         };
         let schema = TypedSchema {
             additional_properties: Some(additional_properties),

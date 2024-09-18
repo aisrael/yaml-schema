@@ -225,6 +225,14 @@ impl TypeValue {
         TypeValue::String("string".to_string())
     }
 
+    pub fn array<V>(items: Vec<V>) -> TypeValue
+    where
+        V: Into<String>,
+    {
+        let strings: Vec<String> = items.into_iter().map(|v| v.into()).collect();
+        TypeValue::Array(strings)
+    }
+
     /// Returns this TypeValue as a simple list of allowed typestrings
     ///
     /// # Examples
@@ -341,13 +349,13 @@ mod tests {
 
     #[test]
     fn test_type_value_as_list_of_allowed_types() {
-        let single_type = TypeValue::String("string".to_string());
+        let single_type = TypeValue::string();
         assert_eq!(
             single_type.as_list_of_allowed_types(),
             vec!["string".to_string()]
         );
 
-        let multiple_types = TypeValue::Array(vec!["string".to_string(), "number".to_string()]);
+        let multiple_types = TypeValue::array(vec!["string", "number"]);
         assert_eq!(
             multiple_types.as_list_of_allowed_types(),
             vec!["string".to_string(), "number".to_string()]
