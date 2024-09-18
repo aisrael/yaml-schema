@@ -53,6 +53,7 @@ impl Validator for TypedSchema {
 
         match self.r#type {
             TypeValue::String(ref s) => match s.as_str() {
+                "array" => self.validate_array(value),
                 "integer" => self.validate_integer(value),
                 "number" => self.validate_number(value),
                 "object" => self.validate_object(value),
@@ -311,6 +312,15 @@ impl TypedSchema {
             }
         }
 
+        Ok(())
+    }
+
+    fn validate_array(&self, value: &serde_yaml::Value) -> Result<(), YamlSchemaError> {
+        if !value.is_sequence() {
+            return generic_error!("Expected an array, but got: {:?}", value);
+        }
+
+        // Add more array validation logic here if needed
         Ok(())
     }
 }
