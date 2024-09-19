@@ -3,7 +3,7 @@ use log::debug;
 use crate::error::YamlSchemaError;
 use crate::{
     format_vec, generic_error, not_yet_implemented, AdditionalProperties, ArrayItemsValue,
-    EnumSchema, TypeValue, TypedSchema, YamlSchema, YamlSchemaNumber,
+    EnumSchema, OneOfSchema, TypeValue, TypedSchema, YamlSchema, YamlSchemaNumber,
 };
 
 pub struct Engine<'a> {
@@ -43,6 +43,7 @@ impl Validator for YamlSchema {
                 typed_schema.validate(value)
             }
             YamlSchema::Enum(enum_schema) => enum_schema.validate(value),
+            YamlSchema::OneOf(one_of_schema) => one_of_schema.validate(value),
         }
     }
 }
@@ -51,23 +52,37 @@ impl Validator for TypedSchema {
     fn validate(&self, value: &serde_yaml::Value) -> Result<(), YamlSchemaError> {
         debug!("Validating value: {:?}", value);
 
-        match self.r#type {
-            TypeValue::String(ref s) => match s.as_str() {
-                "array" => self.validate_array(value),
-                "integer" => self.validate_integer(value),
-                "number" => self.validate_number(value),
-                "object" => self.validate_object(value),
-                "string" => self.validate_string(value),
-                _ => generic_error!("Unknown type '{}'!", s),
-            },
-            TypeValue::Array(_) => {
-                not_yet_implemented!()
+        if let Some(ref t) = self.r#type {
+            match t {
+                TypeValue::String(ref s) => match s.as_str() {
+                    "array" => self.validate_array(value),
+                    "boolean" => self.validate_boolean(value),
+                    "integer" => self.validate_integer(value),
+                    "number" => self.validate_number(value),
+                    "object" => self.validate_object(value),
+                    "string" => self.validate_string(value),
+                    _ => generic_error!("Unknown type '{}'!", s),
+                },
+                TypeValue::Array(ref _types) => {
+                    not_yet_implemented!()
+                }
             }
+        } else if !value.is_null() {
+            return generic_error!("Expected a null value, but got: {:?}", value);
+        } else {
+            Ok(())
         }
     }
 }
 
 impl TypedSchema {
+    fn validate_boolean(&self, value: &serde_yaml::Value) -> Result<(), YamlSchemaError> {
+        if !value.is_bool() {
+            return generic_error!("Expected a boolean, but got: {:?}", value);
+        }
+        Ok(())
+    }
+
     fn validate_integer(&self, value: &serde_yaml::Value) -> Result<(), YamlSchemaError> {
         if !value.is_i64() {
             if value.is_f64() {
@@ -125,6 +140,20 @@ impl TypedSchema {
                 YamlSchemaNumber::Float(max) => {
                     if (i as f64) > *max {
                         return generic_error!("Number is too big!");
+                    }
+                }
+            }
+        }
+        if let Some(multiple_of) = &self.multiple_of {
+            match multiple_of {
+                YamlSchemaNumber::Integer(multiple) => {
+                    if i % *multiple != 0 {
+                        return generic_error!("Number is not a multiple of {}!", multiple);
+                    }
+                }
+                YamlSchemaNumber::Float(multiple) => {
+                    if (i as f64) % *multiple != 0.0 {
+                        return generic_error!("Number is not a multiple of {}!", multiple);
                     }
                 }
             }
@@ -230,7 +259,7 @@ impl TypedSchema {
                         // check if the value is _NOT_ valid for any of the allowed types
                         let is_invalid = allowed_types.iter().any(|allowed_type| {
                             let typed_schema = TypedSchema {
-                                r#type: TypeValue::String(allowed_type.clone()),
+                                r#type: Some(TypeValue::String(allowed_type.clone())),
                                 ..Default::default()
                             };
                             debug!(
@@ -320,11 +349,13 @@ impl TypedSchema {
             return generic_error!("Expected an array, but got: {:?}", value);
         }
 
+        let array = value.as_sequence().unwrap();
+
         // validate array items
         if let Some(items) = &self.items {
             match items {
                 ArrayItemsValue::TypedSchema(typed_schema) => {
-                    for item in value.as_sequence().unwrap() {
+                    for item in array {
                         typed_schema.validate(item)?;
                     }
                 }
@@ -339,10 +370,20 @@ impl TypedSchema {
             }
         }
 
+        // validate contains
+        if let Some(contains) = &self.contains {
+            if !array.iter().any(|item| contains.validate(item).is_ok()) {
+                return Err(YamlSchemaError::GenericError(
+                    "Contains validation failed!".to_string(),
+                ));
+            }
+        }
+
         // validate prefix items
         if let Some(prefix_items) = &self.prefix_items {
             debug!("Validating prefix items: {}", format_vec(prefix_items));
-            for (i, item) in value.as_sequence().unwrap().iter().enumerate() {
+            for (i, item) in array.iter().enumerate() {
+                // if the index is within the prefix items, validate against the prefix items schema
                 if i < prefix_items.len() {
                     debug!(
                         "Validating prefix item {} with schema: {}",
@@ -350,11 +391,15 @@ impl TypedSchema {
                     );
                     prefix_items[i].validate(item)?;
                 } else if let Some(items) = &self.items {
+                    // if the index is not within the prefix items, validate against the array items schema
                     match items {
                         ArrayItemsValue::TypedSchema(typed_schema) => {
                             typed_schema.validate(item)?;
                         }
-                        ArrayItemsValue::Boolean(true) => { /* no-op */ }
+                        ArrayItemsValue::Boolean(true) => {
+                            // `items: true` allows any items
+                            break;
+                        }
                         ArrayItemsValue::Boolean(false) => {
                             return Err(YamlSchemaError::GenericError(
                                 "Additional array items are not allowed!".to_string(),
@@ -380,8 +425,33 @@ impl Validator for EnumSchema {
     }
 }
 
+impl Validator for OneOfSchema {
+    fn validate(&self, value: &serde_yaml::Value) -> Result<(), YamlSchemaError> {
+        {
+            let schemas: &Vec<YamlSchema> = &self.one_of;
+            let mut one_of_is_valid = false;
+            for schema in schemas {
+                debug!("Validating value: {:?} against schema: {}", value, schema);
+                if schema.validate(value).is_ok() {
+                    if one_of_is_valid {
+                        return generic_error!("Value matched multiple schemas in `oneOf`!");
+                    }
+                    one_of_is_valid = true;
+                }
+            }
+            if one_of_is_valid {
+                Ok(())
+            } else {
+                generic_error!("None of the schemas in `oneOf` matched!")
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
+
+    use std::collections::HashMap;
 
     use super::*;
 
@@ -413,6 +483,7 @@ mod tests {
             r#type: TypeValue::string(),
         };
         let schema = TypedSchema {
+            r#type: Some(TypeValue::object()),
             additional_properties: Some(additional_properties),
             ..Default::default()
         };
@@ -473,6 +544,70 @@ mod tests {
         if let Err(e) = result {
             panic!("Error: {:?}", e);
         }
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_one_of_with_multiple_schemas() {
+        let one_of_schema = OneOfSchema {
+            one_of: vec![
+                YamlSchema::TypedSchema(Box::new(TypedSchema {
+                    r#type: Some(TypeValue::number()),
+                    multiple_of: Some(YamlSchemaNumber::Integer(5)),
+                    ..Default::default()
+                })),
+                YamlSchema::TypedSchema(Box::new(TypedSchema {
+                    r#type: Some(TypeValue::number()),
+                    multiple_of: Some(YamlSchemaNumber::Integer(3)),
+                    ..Default::default()
+                })),
+            ],
+        };
+        let yaml = serde_yaml::from_str(
+            r#"
+            10
+        "#,
+        )
+        .unwrap();
+        let result = one_of_schema.validate(&yaml);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_pattern_properties_with_one_of() {
+        let one_of: Vec<YamlSchema> = vec![
+            YamlSchema::TypedSchema(Box::new(TypedSchema::null())),
+            YamlSchema::TypedSchema(Box::new(TypedSchema::object(
+                vec![(
+                    "name".to_string(),
+                    YamlSchema::TypedSchema(Box::new(TypedSchema {
+                        r#type: Some(TypeValue::string()),
+                        additional_properties: Some(AdditionalProperties::Boolean(false)),
+                        ..Default::default()
+                    })),
+                )]
+                .into_iter()
+                .collect(),
+            ))),
+        ];
+        let pattern_properties: HashMap<String, YamlSchema> = HashMap::from([(
+            "^[a-zA-Z0-9]+$".to_string(),
+            YamlSchema::OneOf(OneOfSchema { one_of: one_of }),
+        )]);
+        let pattern_properties_schema: TypedSchema = TypedSchema {
+            r#type: Some(TypeValue::object()),
+            pattern_properties: Some(pattern_properties),
+            ..Default::default()
+        };
+
+        let yaml = serde_yaml::from_str(
+            r#"
+            a1b:
+                name: John
+        "#,
+        )
+        .unwrap();
+        let result = pattern_properties_schema.validate(&yaml);
         assert!(result.is_ok());
     }
 }

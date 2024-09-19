@@ -186,3 +186,38 @@ Feature: Arrays
       - NW
       - 20500
       ```
+
+  Scenario: Contains
+    # While the items schema must be valid for every item in the array, the `contains` only needs to
+    # validate against one or more items in the array.
+    Given a YAML schema:
+      ```
+      type: array
+      contains:
+        type: number
+      ```
+    # A single "number" is enough to make this pass
+    Then it should accept:
+      ```
+      - life
+      - universe
+      - everything
+      - 42
+      ```
+    # But if we have no number, it fails
+    But it should NOT accept:
+      ```
+      - life
+      - universe
+      - everything
+      - forty-two
+      ```
+    # All numbers is, of course, also ok
+    And it should accept:
+      ```
+      - 1
+      - 2
+      - 3
+      - 4
+      - 5
+      ```

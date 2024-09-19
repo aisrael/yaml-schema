@@ -24,15 +24,22 @@ pub enum YamlSchema {
     #[default]
     Empty,
     Boolean(bool),
-    TypedSchema(Box<TypedSchema>),
     Enum(EnumSchema),
+    OneOf(OneOfSchema),
+    TypedSchema(Box<TypedSchema>),
+}
+
+#[derive(Debug, Default, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct OneOfSchema {
+    pub one_of: Vec<YamlSchema>,
 }
 
 /// A typed schema is a schema that has a type
 #[derive(Debug, Default, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct TypedSchema {
-    pub r#type: TypeValue,
+    pub r#type: Option<TypeValue>,
     // number
     pub minimum: Option<YamlSchemaNumber>,
     pub maximum: Option<YamlSchemaNumber>,
@@ -54,6 +61,7 @@ pub struct TypedSchema {
     // array
     pub items: Option<ArrayItemsValue>,
     pub prefix_items: Option<Vec<YamlSchema>>,
+    pub contains: Option<YamlSchema>,
 }
 
 /// A type value is either a string or an array of strings
@@ -114,30 +122,46 @@ impl fmt::Display for YamlSchema {
         match self {
             YamlSchema::Empty => write!(f, "<empty schema>"),
             YamlSchema::Boolean(b) => write!(f, "{}", b),
-            YamlSchema::TypedSchema(s) => write!(f, "{}", s),
             YamlSchema::Enum(e) => write!(f, "{}", e),
+            YamlSchema::OneOf(one_of_schema) => {
+                write!(f, "{}", one_of_schema)
+            }
+            YamlSchema::TypedSchema(s) => write!(f, "{}", s),
         }
     }
 }
 
+impl fmt::Display for OneOfSchema {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "oneOf:{}", format_vec(&self.one_of))
+    }
+}
+
 impl TypedSchema {
+    pub fn null() -> TypedSchema {
+        TypedSchema {
+            r#type: None,
+            ..Default::default()
+        }
+    }
+
     pub fn string() -> TypedSchema {
         TypedSchema {
-            r#type: TypeValue::string(),
+            r#type: Some(TypeValue::string()),
             ..Default::default()
         }
     }
 
     pub fn number() -> TypedSchema {
         TypedSchema {
-            r#type: TypeValue::number(),
+            r#type: Some(TypeValue::number()),
             ..Default::default()
         }
     }
 
     pub fn object(properties: HashMap<String, YamlSchema>) -> TypedSchema {
         TypedSchema {
-            r#type: TypeValue::object(),
+            r#type: Some(TypeValue::object()),
             properties: Some(properties),
             ..Default::default()
         }
@@ -148,7 +172,11 @@ impl fmt::Display for TypedSchema {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut fields = Vec::new();
 
-        fields.push(format!("type: {}", self.r#type));
+        if let Some(t) = &self.r#type {
+            fields.push(format!("type: {}", t));
+        } else {
+            fields.push("type: null".to_string());
+        }
 
         if let Some(min) = &self.minimum {
             fields.push(format!("minimum: {}", min));
@@ -157,13 +185,13 @@ impl fmt::Display for TypedSchema {
             fields.push(format!("maximum: {}", max));
         }
         if let Some(ex_min) = &self.exclusive_minimum {
-            fields.push(format!("exclusive_minimum: {}", ex_min));
+            fields.push(format!("exclusiveMinimum: {}", ex_min));
         }
         if let Some(ex_max) = &self.exclusive_maximum {
-            fields.push(format!("exclusive_maximum: {}", ex_max));
+            fields.push(format!("exclusiveMaximum: {}", ex_max));
         }
         if let Some(mult_of) = &self.multiple_of {
-            fields.push(format!("multiple_of: {}", mult_of));
+            fields.push(format!("multipleOf: {}", mult_of));
         }
         if let Some(props) = &self.properties {
             fields.push(format!("properties: {}", format_map(props)));
@@ -172,19 +200,28 @@ impl fmt::Display for TypedSchema {
             fields.push(format!("required: {:?}", req));
         }
         if let Some(add_props) = &self.additional_properties {
-            fields.push(format!("additional_properties: {:?}", add_props));
+            fields.push(format!("additionalProperties: {}", add_props));
         }
         if let Some(pattern_props) = &self.pattern_properties {
-            fields.push(format!("pattern_properties: {:?}", pattern_props));
+            fields.push(format!("patternProperties: {}", format_map(pattern_props)));
         }
         if let Some(min_len) = &self.min_length {
-            fields.push(format!("min_length: {}", min_len));
+            fields.push(format!("minLength: {}", min_len));
         }
         if let Some(max_len) = &self.max_length {
-            fields.push(format!("max_length: {}", max_len));
+            fields.push(format!("maxLength: {}", max_len));
         }
         if let Some(pattern) = &self.pattern {
             fields.push(format!("pattern: {}", pattern));
+        }
+        if let Some(items) = &self.items {
+            fields.push(format!("items: {}", items));
+        }
+        if let Some(prefix_items) = &self.prefix_items {
+            fields.push(format!("prefixItems: {}", format_vec(prefix_items)));
+        }
+        if let Some(contains) = &self.contains {
+            fields.push(format!("contains: {}", contains));
         }
 
         write!(f, "TypedSchema {{ {} }}", fields.join(", "))
@@ -294,6 +331,15 @@ impl fmt::Display for EnumSchema {
     }
 }
 
+impl fmt::Display for AdditionalProperties {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            AdditionalProperties::Boolean(b) => write!(f, "additionalProperties: {}", b),
+            AdditionalProperties::Type{ r#type } => write!(f, "additionalProperties: {}", r#type),
+        }
+    }
+}
+
 impl fmt::Display for ArrayItemsValue {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -360,5 +406,30 @@ mod tests {
             multiple_types.as_list_of_allowed_types(),
             vec!["string".to_string(), "number".to_string()]
         );
+    }
+
+    #[test]
+    fn test_null_schema() {
+        let schema: YamlSchema = serde_yaml::from_str("type: null").unwrap();
+        match schema {
+            YamlSchema::TypedSchema(s) => {
+                assert_eq!(s.r#type, None);
+            }
+            _ => panic!("Expected a TypedSchema"),
+        }
+    }
+
+    #[test]
+    fn test_one_of_schema() {
+        let schema: YamlSchema = serde_yaml::from_str(
+            "oneOf:
+        - type: number
+          multipleOf: 5
+        - type: number
+          multipleOf: 3
+        ",
+        )
+        .unwrap();
+        println!("{}", schema);
     }
 }

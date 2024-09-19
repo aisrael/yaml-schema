@@ -25,3 +25,26 @@ Feature: Numeric types
       ```
       "42"
       ```
+
+  Scenario: Multiples
+    Given a YAML schema:
+      ```
+      type: number
+      multipleOf: 10
+      ```
+    Then it should accept:
+      ```
+      0
+      ```
+    And it should accept:
+      ```
+      10
+      ```
+    And it should accept:
+      ```
+      20
+      ```
+    But it should NOT accept:
+      ```
+      23
+      ```
