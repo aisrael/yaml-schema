@@ -223,7 +223,7 @@ impl TypedSchema {
     /// Validate the object according to the schema rules
     fn validate_object(&self, value: &serde_yaml::Value) -> Result<(), YamlSchemaError> {
         let mapping = value.as_mapping().ok_or_else(|| {
-            YamlSchemaError::GenericError(format!("Expected a mapping, but got: {:?}", value))
+            YamlSchemaError::GenericError(format!("Expected an object, but got: {}", format_serde_yaml_value(value)))
         })?;
 
         for (k, value) in mapping {
@@ -435,10 +435,22 @@ impl Validator for ConstSchema {
     }
 }
 
+fn format_serde_yaml_value(value: &serde_yaml::Value) -> String {
+    match value {
+        serde_yaml::Value::Null => "null".to_string(),
+        serde_yaml::Value::Bool(b) => b.to_string(),
+        serde_yaml::Value::Number(n) => n.to_string(),
+        serde_yaml::Value::String(s) => format!("\"{}\"", s),
+        _ => format!("{:?}", value),
+    }
+}
+
 impl Validator for EnumSchema {
     fn validate(&self, value: &serde_yaml::Value) -> Result<(), YamlSchemaError> {
         if !self.r#enum.contains(value) {
-            return generic_error!("Value is not in the enum!");
+            let value_str = format_serde_yaml_value(value);
+            let enum_values = self.r#enum.iter().map(|v| format_serde_yaml_value(v)).collect::<Vec<String>>().join(", ");
+            return generic_error!("Value {} is not in the enum: [{}]", value_str, enum_values);
         }
         Ok(())
     }
