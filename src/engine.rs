@@ -449,7 +449,7 @@ impl Validator for EnumSchema {
     fn validate(&self, value: &serde_yaml::Value) -> Result<(), YamlSchemaError> {
         if !self.r#enum.contains(value) {
             let value_str = format_serde_yaml_value(value);
-            let enum_values = self.r#enum.iter().map(|v| format_serde_yaml_value(v)).collect::<Vec<String>>().join(", ");
+            let enum_values = self.r#enum.iter().map(format_serde_yaml_value).collect::<Vec<String>>().join(", ");
             return generic_error!("Value {} is not in the enum: [{}]", value_str, enum_values);
         }
         Ok(())
@@ -661,7 +661,7 @@ mod tests {
         ];
         let pattern_properties: HashMap<String, YamlSchema> = HashMap::from([(
             "^[a-zA-Z0-9]+$".to_string(),
-            YamlSchema::OneOf(OneOfSchema { one_of: one_of }),
+            YamlSchema::OneOf(OneOfSchema { one_of }),
         )]);
         let pattern_properties_schema: TypedSchema = TypedSchema {
             r#type: Some(TypeValue::object()),
