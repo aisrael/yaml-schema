@@ -103,6 +103,8 @@ async fn main() {
     BasicsWorld::run("features/basics.feature").await;
     BasicsWorld::run("features/validation/arrays.feature").await;
     BasicsWorld::run("features/validation/booleans.feature").await;
+    BasicsWorld::run("features/validation/const.feature").await;
+    BasicsWorld::run("features/validation/enums.feature").await;
     BasicsWorld::run("features/validation/nulls.feature").await;
     BasicsWorld::run("features/validation/numbers.feature").await;
     BasicsWorld::run("features/validation/objects.feature").await;

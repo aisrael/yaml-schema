@@ -3,7 +3,7 @@ use log::debug;
 use crate::error::YamlSchemaError;
 use crate::{
     format_vec, generic_error, not_yet_implemented, AdditionalProperties, ArrayItemsValue,
-    EnumSchema, OneOfSchema, TypeValue, TypedSchema, YamlSchema, YamlSchemaNumber,
+    ConstSchema, EnumSchema, OneOfSchema, TypeValue, TypedSchema, YamlSchema, YamlSchemaNumber,
 };
 
 pub struct Engine<'a> {
@@ -38,6 +38,7 @@ impl Validator for YamlSchema {
                     generic_error!("Schema is `false`!")
                 }
             }
+            YamlSchema::Const(const_schema) => const_schema.validate(value),
             YamlSchema::TypedSchema(typed_schema) => {
                 debug!("Schema value: {}", typed_schema);
                 typed_schema.validate(value)
@@ -416,6 +417,24 @@ impl TypedSchema {
     }
 }
 
+impl Validator for ConstSchema {
+    fn validate(&self, value: &serde_yaml::Value) -> Result<(), YamlSchemaError> {
+        debug!(
+            "Validating value: {:?} against const: {:?}",
+            value, self.r#const
+        );
+        let expected_value = &self.r#const;
+        if expected_value != value {
+            return generic_error!(
+                "Const validation failed, expected: {:?}, got: {:?}",
+                expected_value,
+                value
+            );
+        }
+        Ok(())
+    }
+}
+
 impl Validator for EnumSchema {
     fn validate(&self, value: &serde_yaml::Value) -> Result<(), YamlSchemaError> {
         if !self.r#enum.contains(value) {
@@ -454,6 +473,44 @@ mod tests {
     use std::collections::HashMap;
 
     use super::*;
+
+    #[test]
+    fn test_const() {
+        let const_schema = ConstSchema::new("United States of America");
+        assert!(const_schema
+            .validate(&serde_yaml::Value::String(
+                "United States of America".to_string()
+            ))
+            .is_ok());
+        assert!(const_schema
+            .validate(&serde_yaml::Value::String("Canada".to_string()))
+            .is_err());
+        let schema = TypedSchema::object(
+            vec![("country".to_string(), YamlSchema::Const(const_schema))]
+                .into_iter()
+                .collect(),
+        );
+        let yaml_schema = YamlSchema::TypedSchema(Box::new(schema));
+        let yaml = serde_yaml::from_str(
+            r#"
+            country: United States of America
+        "#,
+        )
+        .unwrap();
+        let result = yaml_schema.validate(&yaml);
+        assert!(result.is_ok());
+
+        let parsed_yaml_schema: YamlSchema = serde_yaml::from_str(
+            r#"
+            const: United States of America
+            "#,
+        )
+        .unwrap();
+        let result = parsed_yaml_schema.validate(&serde_yaml::Value::String(
+            "United States of America".to_string(),
+        ));
+        assert!(result.is_ok());
+    }
 
     #[test]
     fn test_properties_with_no_value() {

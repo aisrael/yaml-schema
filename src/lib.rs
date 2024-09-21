@@ -24,8 +24,11 @@ pub enum YamlSchema {
     #[default]
     Empty,
     Boolean(bool),
+    Const(ConstSchema),
     Enum(EnumSchema),
     OneOf(OneOfSchema),
+    // Need to put TypedSchema last, because not specifying `type:`
+    // is interpreted as `type: null` (None)
     TypedSchema(Box<TypedSchema>),
 }
 
@@ -80,6 +83,11 @@ pub enum YamlSchemaNumber {
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
+pub struct ConstSchema {
+    pub r#const: serde_yaml::Value,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct EnumSchema {
     pub r#enum: Vec<serde_yaml::Value>,
 }
@@ -122,6 +130,7 @@ impl fmt::Display for YamlSchema {
         match self {
             YamlSchema::Empty => write!(f, "<empty schema>"),
             YamlSchema::Boolean(b) => write!(f, "{}", b),
+            YamlSchema::Const(c) => write!(f, "{}", c),
             YamlSchema::Enum(e) => write!(f, "{}", e),
             YamlSchema::OneOf(one_of_schema) => {
                 write!(f, "{}", one_of_schema)
@@ -315,6 +324,38 @@ impl fmt::Display for YamlSchemaNumber {
     }
 }
 
+impl ConstSchema {
+    pub fn new<V>(value: V) -> ConstSchema
+    where
+        V: Into<serde_yaml::Value>,
+    {
+        ConstSchema {
+            r#const: value.into(),
+        }
+    }
+
+    pub fn null() -> ConstSchema {
+        ConstSchema {
+            r#const: serde_yaml::Value::Null,
+        }
+    }
+
+    pub fn string<V>(value: V) -> ConstSchema
+    where
+        V: Into<String>,
+    {
+        ConstSchema {
+            r#const: serde_yaml::Value::String(value.into()),
+        }
+    }
+}
+
+impl fmt::Display for ConstSchema {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Const {:?}", self.r#const)
+    }
+}
+
 impl EnumSchema {
     pub fn new<V>(values: Vec<V>) -> EnumSchema
     where
@@ -335,7 +376,7 @@ impl fmt::Display for AdditionalProperties {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             AdditionalProperties::Boolean(b) => write!(f, "additionalProperties: {}", b),
-            AdditionalProperties::Type{ r#type } => write!(f, "additionalProperties: {}", r#type),
+            AdditionalProperties::Type { r#type } => write!(f, "additionalProperties: {}", r#type),
         }
     }
 }
