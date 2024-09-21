@@ -60,7 +60,7 @@ Should fail with exit code 1
 - [Basic features](features/basics.feature)
 - [String validation](features/validation/strings.feature)
 - [Numeric types](features/validation/numbers.feature)
-- [Const](features/validation/consts.feature)
+- [Const](features/validation/const.feature)
 - [Enums](features/validation/enums.feature)
 - [Object types](features/validation/objects.feature)
 - [Arrays](features/validation/arrays.feature)
