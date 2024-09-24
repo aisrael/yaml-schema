@@ -55,7 +55,7 @@ Feature: Schema Composition
       name: John
       ```
 
-  Scenario: properties with oneOf ZZZ
+  Scenario: properties with oneOf
     Given a YAML schema:
       ```
       type: object

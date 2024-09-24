@@ -42,7 +42,7 @@ pub struct OneOfSchema {
 #[derive(Debug, Default, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct TypedSchema {
-    pub r#type: Option<TypeValue>,
+    pub r#type: TypeValue,
     // number
     pub minimum: Option<YamlSchemaNumber>,
     pub maximum: Option<YamlSchemaNumber>,
@@ -71,7 +71,7 @@ pub struct TypedSchema {
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(untagged)]
 pub enum TypeValue {
-    String(String),
+    Single(serde_yaml::Value),
     Array(Vec<String>),
 }
 
@@ -149,28 +149,28 @@ impl fmt::Display for OneOfSchema {
 impl TypedSchema {
     pub fn null() -> TypedSchema {
         TypedSchema {
-            r#type: None,
+            r#type: TypeValue::null(),
             ..Default::default()
         }
     }
 
     pub fn string() -> TypedSchema {
         TypedSchema {
-            r#type: Some(TypeValue::string()),
+            r#type: TypeValue::string(),
             ..Default::default()
         }
     }
 
     pub fn number() -> TypedSchema {
         TypedSchema {
-            r#type: Some(TypeValue::number()),
+            r#type: TypeValue::number(),
             ..Default::default()
         }
     }
 
     pub fn object(properties: HashMap<String, YamlSchema>) -> TypedSchema {
         TypedSchema {
-            r#type: Some(TypeValue::object()),
+            r#type: TypeValue::object(),
             properties: Some(properties),
             ..Default::default()
         }
@@ -181,11 +181,7 @@ impl fmt::Display for TypedSchema {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut fields = Vec::new();
 
-        if let Some(t) = &self.r#type {
-            fields.push(format!("type: {}", t));
-        } else {
-            fields.push("type: null".to_string());
-        }
+        fields.push(format!("type: {}", self.r#type));
 
         if let Some(min) = &self.minimum {
             fields.push(format!("minimum: {}", min));
@@ -259,16 +255,27 @@ where
 
 /// A type value is either a string or an array of strings
 impl TypeValue {
+    pub fn null() -> TypeValue {
+        TypeValue::Single(serde_yaml::Value::Null)
+    }
+
+    pub fn from_string<V>(value: V) -> TypeValue
+    where
+        V: Into<String>,
+    {
+        TypeValue::Single(serde_yaml::Value::String(value.into()))
+    }
+
     pub fn number() -> TypeValue {
-        TypeValue::String("number".to_string())
+        Self::from_string("number")
     }
 
     pub fn object() -> TypeValue {
-        TypeValue::String("object".to_string())
+        Self::from_string("object")
     }
 
     pub fn string() -> TypeValue {
-        TypeValue::String("string".to_string())
+        Self::from_string("string")
     }
 
     pub fn array<V>(items: Vec<V>) -> TypeValue
@@ -286,7 +293,7 @@ impl TypeValue {
     /// ```
     /// use yaml_schema::TypeValue;
     ///
-    /// let single_type = TypeValue::String("string".to_string());
+    /// let single_type = TypeValue::from_string("string");
     /// assert_eq!(single_type.as_list_of_allowed_types(), vec!["string".to_string()]);
     ///
     /// let multiple_types = TypeValue::Array(vec!["string".to_string(), "number".to_string()]);
@@ -294,7 +301,10 @@ impl TypeValue {
     /// ```
     pub fn as_list_of_allowed_types(&self) -> Vec<String> {
         match self {
-            TypeValue::String(s) => vec![s.clone()],
+            TypeValue::Single(s) => match s {
+                serde_yaml::Value::String(s) => vec![s.clone()],
+                _ => Vec::new(), // if `null`, etc., we return an empty list
+            },
             TypeValue::Array(v) => v.clone(),
         }
     }
@@ -303,7 +313,11 @@ impl TypeValue {
 impl fmt::Display for TypeValue {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            TypeValue::String(s) => write!(f, "\"{}\"", s),
+            TypeValue::Single(s) => match s {
+                serde_yaml::Value::String(s) => write!(f, "\"{}\"", s),
+                serde_yaml::Value::Null => write!(f, "null"),
+                _ => write!(f, "{:?}", s),
+            },
             TypeValue::Array(v) => write!(f, "[{}]", v.join(", ")),
         }
     }
@@ -311,7 +325,7 @@ impl fmt::Display for TypeValue {
 
 impl Default for TypeValue {
     fn default() -> Self {
-        TypeValue::String("object".to_string())
+        TypeValue::object()
     }
 }
 
@@ -454,7 +468,7 @@ mod tests {
         let schema: YamlSchema = serde_yaml::from_str("type: null").unwrap();
         match schema {
             YamlSchema::TypedSchema(s) => {
-                assert_eq!(s.r#type, None);
+                assert_eq!(s.r#type, TypeValue::null());
             }
             _ => panic!("Expected a TypedSchema"),
         }

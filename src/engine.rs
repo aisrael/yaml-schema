@@ -53,9 +53,9 @@ impl Validator for TypedSchema {
     fn validate(&self, value: &serde_yaml::Value) -> Result<(), YamlSchemaError> {
         debug!("Validating value: {:?}", value);
 
-        if let Some(ref t) = self.r#type {
-            match t {
-                TypeValue::String(ref s) => match s.as_str() {
+        match self.r#type {
+            TypeValue::Single(ref v) => match v {
+                serde_yaml::Value::String(ref s) => match s.as_str() {
                     "array" => self.validate_array(value),
                     "boolean" => self.validate_boolean(value),
                     "integer" => self.validate_integer(value),
@@ -64,14 +64,17 @@ impl Validator for TypedSchema {
                     "string" => self.validate_string(value),
                     _ => generic_error!("Unknown type '{}'!", s),
                 },
-                TypeValue::Array(ref _types) => {
-                    not_yet_implemented!()
+                serde_yaml::Value::Null => {
+                    if !value.is_null() {
+                        return generic_error!("Expected a value, but got: {:?}", value);
+                    }
+                    Ok(())
                 }
+                _ => generic_error!("Expected a string, but got: {:?}", value),
+            },
+            TypeValue::Array(ref _types) => {
+                not_yet_implemented!()
             }
-        } else if !value.is_null() {
-            return generic_error!("Expected a null value, but got: {:?}", value);
-        } else {
-            Ok(())
         }
     }
 }
@@ -223,7 +226,10 @@ impl TypedSchema {
     /// Validate the object according to the schema rules
     fn validate_object(&self, value: &serde_yaml::Value) -> Result<(), YamlSchemaError> {
         let mapping = value.as_mapping().ok_or_else(|| {
-            YamlSchemaError::GenericError(format!("Expected an object, but got: {}", format_serde_yaml_value(value)))
+            YamlSchemaError::GenericError(format!(
+                "Expected an object, but got: {}",
+                format_serde_yaml_value(value)
+            ))
         })?;
 
         for (k, value) in mapping {
@@ -260,7 +266,7 @@ impl TypedSchema {
                         // check if the value is _NOT_ valid for any of the allowed types
                         let is_invalid = allowed_types.iter().any(|allowed_type| {
                             let typed_schema = TypedSchema {
-                                r#type: Some(TypeValue::String(allowed_type.clone())),
+                                r#type: TypeValue::from_string(allowed_type.clone()),
                                 ..Default::default()
                             };
                             debug!(
@@ -449,7 +455,12 @@ impl Validator for EnumSchema {
     fn validate(&self, value: &serde_yaml::Value) -> Result<(), YamlSchemaError> {
         if !self.r#enum.contains(value) {
             let value_str = format_serde_yaml_value(value);
-            let enum_values = self.r#enum.iter().map(format_serde_yaml_value).collect::<Vec<String>>().join(", ");
+            let enum_values = self
+                .r#enum
+                .iter()
+                .map(format_serde_yaml_value)
+                .collect::<Vec<String>>()
+                .join(", ");
             return generic_error!("Value {} is not in the enum: [{}]", value_str, enum_values);
         }
         Ok(())
@@ -552,7 +563,7 @@ mod tests {
             r#type: TypeValue::string(),
         };
         let schema = TypedSchema {
-            r#type: Some(TypeValue::object()),
+            r#type: TypeValue::object(),
             additional_properties: Some(additional_properties),
             ..Default::default()
         };
@@ -621,12 +632,12 @@ mod tests {
         let one_of_schema = OneOfSchema {
             one_of: vec![
                 YamlSchema::TypedSchema(Box::new(TypedSchema {
-                    r#type: Some(TypeValue::number()),
+                    r#type: TypeValue::number(),
                     multiple_of: Some(YamlSchemaNumber::Integer(5)),
                     ..Default::default()
                 })),
                 YamlSchema::TypedSchema(Box::new(TypedSchema {
-                    r#type: Some(TypeValue::number()),
+                    r#type: TypeValue::number(),
                     multiple_of: Some(YamlSchemaNumber::Integer(3)),
                     ..Default::default()
                 })),
@@ -650,7 +661,7 @@ mod tests {
                 vec![(
                     "name".to_string(),
                     YamlSchema::TypedSchema(Box::new(TypedSchema {
-                        r#type: Some(TypeValue::string()),
+                        r#type: TypeValue::string(),
                         additional_properties: Some(AdditionalProperties::Boolean(false)),
                         ..Default::default()
                     })),
@@ -664,7 +675,7 @@ mod tests {
             YamlSchema::OneOf(OneOfSchema { one_of }),
         )]);
         let pattern_properties_schema: TypedSchema = TypedSchema {
-            r#type: Some(TypeValue::object()),
+            r#type: TypeValue::object(),
             pattern_properties: Some(pattern_properties),
             ..Default::default()
         };
