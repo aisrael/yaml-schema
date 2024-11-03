@@ -116,11 +116,13 @@ impl YamlSchema {
         YamlSchema::Empty
     }
 
-    pub fn const_schema<V>(value: V)  -> YamlSchema 
+    pub fn const_schema<V>(value: V) -> YamlSchema
     where
         V: Into<serde_yaml::Value>,
     {
-        YamlSchema::Const(ConstSchema { r#const: value.into() })
+        YamlSchema::Const(ConstSchema {
+            r#const: value.into(),
+        })
     }
 
     pub fn typed_schema(schema: TypedSchema) -> YamlSchema {

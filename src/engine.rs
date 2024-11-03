@@ -2,9 +2,9 @@ use log::debug;
 
 use crate::error::YamlSchemaError;
 use crate::{
-    Context,
     format_vec, generic_error, not_yet_implemented, AdditionalProperties, ArrayItemsValue,
-    ConstSchema, EnumSchema, OneOfSchema, TypeValue, TypedSchema, YamlSchema, YamlSchemaNumber,
+    ConstSchema, Context, EnumSchema, OneOfSchema, TypeValue, TypedSchema, YamlSchema,
+    YamlSchemaNumber,
 };
 
 pub struct Engine<'a> {
@@ -24,11 +24,19 @@ impl<'a> Engine<'a> {
 }
 
 pub trait Validator {
-    fn validate(&self, context: &mut Context, value: &serde_yaml::Value) -> Result<(), YamlSchemaError>;
+    fn validate(
+        &self,
+        context: &mut Context,
+        value: &serde_yaml::Value,
+    ) -> Result<(), YamlSchemaError>;
 }
 
 impl Validator for YamlSchema {
-    fn validate(&self, context: &mut Context, value: &serde_yaml::Value) -> Result<(), YamlSchemaError> {
+    fn validate(
+        &self,
+        context: &mut Context,
+        value: &serde_yaml::Value,
+    ) -> Result<(), YamlSchemaError> {
         debug!("self: {}", self);
         debug!("Validating value: {:?}", value);
         match self {
@@ -52,7 +60,11 @@ impl Validator for YamlSchema {
 }
 
 impl Validator for TypedSchema {
-    fn validate(&self, context: &mut Context, value: &serde_yaml::Value) -> Result<(), YamlSchemaError> {
+    fn validate(
+        &self,
+        context: &mut Context,
+        value: &serde_yaml::Value,
+    ) -> Result<(), YamlSchemaError> {
         debug!("Validating value: {:?}", value);
 
         match self.r#type {
@@ -226,7 +238,11 @@ impl TypedSchema {
     }
 
     /// Validate the object according to the schema rules
-    fn validate_object(&self, context: &mut Context, value: &serde_yaml::Value) -> Result<(), YamlSchemaError> {
+    fn validate_object(
+        &self,
+        context: &mut Context,
+        value: &serde_yaml::Value,
+    ) -> Result<(), YamlSchemaError> {
         let mapping = value.as_mapping().ok_or_else(|| {
             YamlSchemaError::GenericError(format!(
                 "Expected an object, but got: {}",
@@ -353,7 +369,11 @@ impl TypedSchema {
         Ok(())
     }
 
-    fn validate_array(&self, context: &mut Context, value: &serde_yaml::Value) -> Result<(), YamlSchemaError> {
+    fn validate_array(
+        &self,
+        context: &mut Context,
+        value: &serde_yaml::Value,
+    ) -> Result<(), YamlSchemaError> {
         if !value.is_sequence() {
             return generic_error!("Expected an array, but got: {:?}", value);
         }
@@ -381,7 +401,10 @@ impl TypedSchema {
 
         // validate contains
         if let Some(contains) = &self.contains {
-            if !array.iter().any(|item| contains.validate(context, item).is_ok()) {
+            if !array
+                .iter()
+                .any(|item| contains.validate(context, item).is_ok())
+            {
                 return Err(YamlSchemaError::GenericError(
                     "Contains validation failed!".to_string(),
                 ));
@@ -426,7 +449,11 @@ impl TypedSchema {
 }
 
 impl Validator for ConstSchema {
-    fn validate(&self, context: &mut Context, value: &serde_yaml::Value) -> Result<(), YamlSchemaError> {
+    fn validate(
+        &self,
+        context: &mut Context,
+        value: &serde_yaml::Value,
+    ) -> Result<(), YamlSchemaError> {
         debug!(
             "Validating value: {:?} against const: {:?}",
             value, self.r#const
@@ -454,7 +481,11 @@ fn format_serde_yaml_value(value: &serde_yaml::Value) -> String {
 }
 
 impl Validator for EnumSchema {
-    fn validate(&self, context: &mut Context, value: &serde_yaml::Value) -> Result<(), YamlSchemaError> {
+    fn validate(
+        &self,
+        context: &mut Context,
+        value: &serde_yaml::Value,
+    ) -> Result<(), YamlSchemaError> {
         if !self.r#enum.contains(value) {
             let value_str = format_serde_yaml_value(value);
             let enum_values = self
@@ -470,7 +501,11 @@ impl Validator for EnumSchema {
 }
 
 impl Validator for OneOfSchema {
-    fn validate(&self, context: &mut Context, value: &serde_yaml::Value) -> Result<(), YamlSchemaError> {
+    fn validate(
+        &self,
+        context: &mut Context,
+        value: &serde_yaml::Value,
+    ) -> Result<(), YamlSchemaError> {
         {
             let schemas: &Vec<YamlSchema> = &self.one_of;
             let mut one_of_is_valid = false;
@@ -505,17 +540,24 @@ mod tests {
         let yaml_schema = YamlSchema::Const(const_schema);
         let mut context = Context::new(&yaml_schema);
         assert!(yaml_schema
-            .validate(&mut context, &serde_yaml::Value::String(
-                "United States of America".to_string()
-            ))
+            .validate(
+                &mut context,
+                &serde_yaml::Value::String("United States of America".to_string())
+            )
             .is_ok());
         assert!(yaml_schema
-            .validate(&mut context, &serde_yaml::Value::String("Canada".to_string()))
+            .validate(
+                &mut context,
+                &serde_yaml::Value::String("Canada".to_string())
+            )
             .is_err());
         let schema = TypedSchema::object(
-            vec![("country".to_string(), YamlSchema::const_schema("United States of America"))]
-                .into_iter()
-                .collect(),
+            vec![(
+                "country".to_string(),
+                YamlSchema::const_schema("United States of America"),
+            )]
+            .into_iter()
+            .collect(),
         );
         let yaml_schema = YamlSchema::TypedSchema(Box::new(schema));
         let yaml = serde_yaml::from_str(
@@ -533,9 +575,10 @@ mod tests {
             "#,
         )
         .unwrap();
-        let result = parsed_yaml_schema.validate(&mut context, &serde_yaml::Value::String(
-            "United States of America".to_string(),
-            ));
+        let result = parsed_yaml_schema.validate(
+            &mut context,
+            &serde_yaml::Value::String("United States of America".to_string()),
+        );
         assert!(result.is_ok());
     }
 
@@ -654,7 +697,7 @@ mod tests {
         )
         .unwrap();
         let yaml_schema = YamlSchema::OneOf(one_of_schema);
-        let mut context = Context::new(&yaml_schema);   
+        let mut context = Context::new(&yaml_schema);
         let result = yaml_schema.validate(&mut context, &yaml);
         assert!(result.is_ok());
     }
