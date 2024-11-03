@@ -3,10 +3,12 @@ use std::fmt;
 
 use serde::{Deserialize, Serialize};
 
+pub mod context;
 pub mod engine;
 #[macro_use]
 pub mod error;
 
+pub use context::Context;
 pub use engine::Engine;
 pub use error::YamlSchemaError;
 
@@ -112,6 +114,13 @@ pub enum ArrayItemsValue {
 impl YamlSchema {
     pub fn new() -> YamlSchema {
         YamlSchema::Empty
+    }
+
+    pub fn const_schema<V>(value: V)  -> YamlSchema 
+    where
+        V: Into<serde_yaml::Value>,
+    {
+        YamlSchema::Const(ConstSchema { r#const: value.into() })
     }
 
     pub fn typed_schema(schema: TypedSchema) -> YamlSchema {
