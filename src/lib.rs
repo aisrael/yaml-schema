@@ -6,11 +6,9 @@ use serde::{Deserialize, Serialize};
 pub mod engine;
 #[macro_use]
 pub mod error;
-pub mod literals;
 
 pub use engine::Engine;
 pub use error::YamlSchemaError;
-pub use literals::{Literal, YamlString};
 
 // Returns the library version, which reflects the crate version
 pub fn version() -> String {
