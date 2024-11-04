@@ -45,7 +45,7 @@ impl Validator for YamlSchema {
                 if *boolean {
                     Ok(())
                 } else {
-                    generic_error!("Schema is `false`!")
+                    Err(generic_error!("Schema is `false`!"))
                 }
             }
             YamlSchema::Const(const_schema) => const_schema.validate(context, value),
@@ -76,15 +76,15 @@ impl Validator for TypedSchema {
                     "number" => self.validate_number(value),
                     "object" => self.validate_object(context, value),
                     "string" => self.validate_string(value),
-                    _ => generic_error!("Unknown type '{}'!", s),
+                    _ => Err(generic_error!("Unknown type '{}'!", s)),
                 },
                 serde_yaml::Value::Null => {
                     if !value.is_null() {
-                        return generic_error!("Expected a value, but got: {:?}", value);
+                        return Err(generic_error!("Expected a value, but got: {:?}", value));
                     }
                     Ok(())
                 }
-                _ => generic_error!("Expected a string, but got: {:?}", value),
+                _ => Err(generic_error!("Expected a string, but got: {:?}", value)),
             },
             TypeValue::Array(ref _types) => {
                 not_yet_implemented!()
@@ -96,7 +96,7 @@ impl Validator for TypedSchema {
 impl TypedSchema {
     fn validate_boolean(&self, value: &serde_yaml::Value) -> Result<(), YamlSchemaError> {
         if !value.is_bool() {
-            return generic_error!("Expected a boolean, but got: {:?}", value);
+            return Err(generic_error!("Expected a boolean, but got: {:?}", value));
         }
         Ok(())
     }
@@ -108,10 +108,10 @@ impl TypedSchema {
                 if f.fract() == 0.0 {
                     return self.validate_number_i64(f as i64);
                 } else {
-                    return generic_error!("Expected an integer, but got: {:?}", value);
+                    return Err(generic_error!("Expected an integer, but got: {:?}", value));
                 }
             }
-            return generic_error!("Expected an integer, but got: {:?}", value);
+            return Err(generic_error!("Expected an integer, but got: {:?}", value));
         }
         let i = value.as_i64().unwrap();
         self.validate_number_i64(i)
@@ -121,15 +121,15 @@ impl TypedSchema {
         if value.is_i64() {
             match value.as_i64() {
                 Some(i) => self.validate_number_i64(i),
-                None => generic_error!("Expected an integer, but got: {:?}", value),
+                None => Err(generic_error!("Expected an integer, but got: {:?}", value)),
             }
         } else if value.is_f64() {
             match value.as_f64() {
                 Some(f) => self.validate_number_f64(f),
-                None => generic_error!("Expected a float, but got: {:?}", value),
+                None => Err(generic_error!("Expected a float, but got: {:?}", value)),
             }
         } else {
-            return generic_error!("Expected a number, but got: {:?}", value);
+            return Err(generic_error!("Expected a number, but got: {:?}", value));
         }
     }
 
@@ -138,12 +138,12 @@ impl TypedSchema {
             match minimum {
                 YamlSchemaNumber::Integer(min) => {
                     if i < *min {
-                        return generic_error!("Number is too small!");
+                        return Err(generic_error!("Number is too small!"));
                     }
                 }
                 YamlSchemaNumber::Float(min) => {
                     if (i as f64) < *min {
-                        return generic_error!("Number is too small!");
+                        return Err(generic_error!("Number is too small!"));
                     }
                 }
             }
@@ -152,12 +152,12 @@ impl TypedSchema {
             match maximum {
                 YamlSchemaNumber::Integer(max) => {
                     if i > *max {
-                        return generic_error!("Number is too big!");
+                        return Err(generic_error!("Number is too big!"));
                     }
                 }
                 YamlSchemaNumber::Float(max) => {
                     if (i as f64) > *max {
-                        return generic_error!("Number is too big!");
+                        return Err(generic_error!("Number is too big!"));
                     }
                 }
             }
@@ -166,12 +166,12 @@ impl TypedSchema {
             match multiple_of {
                 YamlSchemaNumber::Integer(multiple) => {
                     if i % *multiple != 0 {
-                        return generic_error!("Number is not a multiple of {}!", multiple);
+                        return Err(generic_error!("Number is not a multiple of {}!", multiple));
                     }
                 }
                 YamlSchemaNumber::Float(multiple) => {
                     if (i as f64) % *multiple != 0.0 {
-                        return generic_error!("Number is not a multiple of {}!", multiple);
+                        return Err(generic_error!("Number is not a multiple of {}!", multiple));
                     }
                 }
             }
@@ -184,12 +184,12 @@ impl TypedSchema {
             match minimum {
                 YamlSchemaNumber::Integer(min) => {
                     if f < *min as f64 {
-                        return generic_error!("Number is too small!");
+                        return Err(generic_error!("Number is too small!"));
                     }
                 }
                 YamlSchemaNumber::Float(min) => {
                     if f < *min {
-                        return generic_error!("Number is too small!");
+                        return Err(generic_error!("Number is too small!"));
                     }
                 }
             }
@@ -198,12 +198,12 @@ impl TypedSchema {
             match maximum {
                 YamlSchemaNumber::Integer(max) => {
                     if f > *max as f64 {
-                        return generic_error!("Number is too big!");
+                        return Err(generic_error!("Number is too big!"));
                     }
                 }
                 YamlSchemaNumber::Float(max) => {
                     if f > *max {
-                        return generic_error!("Number is too big!");
+                        return Err(generic_error!("Number is too big!"));
                     }
                 }
             }
@@ -218,12 +218,12 @@ impl TypedSchema {
         })?;
         if let Some(min_length) = &self.min_length {
             if yaml_string.len() < *min_length {
-                return generic_error!("String is too short!");
+                return Err(generic_error!("String is too short!"));
             }
         }
         if let Some(max_length) = &self.max_length {
             if yaml_string.len() > *max_length {
-                return generic_error!("String is too long!");
+                return Err(generic_error!("String is too long!"));
             }
         }
         if let Some(pattern) = &self.pattern {
@@ -231,7 +231,7 @@ impl TypedSchema {
                 YamlSchemaError::GenericError(format!("Invalid regular expression pattern: {}", e))
             })?;
             if !re.is_match(yaml_string) {
-                return generic_error!("String does not match regex!");
+                return Err(generic_error!("String does not match regex!"));
             }
         }
         Ok(())
@@ -375,7 +375,7 @@ impl TypedSchema {
         value: &serde_yaml::Value,
     ) -> Result<(), YamlSchemaError> {
         if !value.is_sequence() {
-            return generic_error!("Expected an array, but got: {:?}", value);
+            return Err(generic_error!("Expected an array, but got: {:?}", value));
         }
 
         let array = value.as_sequence().unwrap();
@@ -460,11 +460,13 @@ impl Validator for ConstSchema {
         );
         let expected_value = &self.r#const;
         if expected_value != value {
-            return generic_error!(
+            let error = generic_error!(
                 "Const validation failed, expected: {:?}, got: {:?}",
                 expected_value,
                 value
             );
+            context.add_error(error.clone());
+            return Err(error);
         }
         Ok(())
     }
@@ -494,7 +496,9 @@ impl Validator for EnumSchema {
                 .map(format_serde_yaml_value)
                 .collect::<Vec<String>>()
                 .join(", ");
-            return generic_error!("Value {} is not in the enum: [{}]", value_str, enum_values);
+            let error = generic_error!("Value {} is not in the enum: [{}]", value_str, enum_values);
+            context.add_error(error.clone());
+            return Err(error);
         }
         Ok(())
     }
@@ -513,7 +517,7 @@ impl Validator for OneOfSchema {
                 debug!("Validating value: {:?} against schema: {}", value, schema);
                 if schema.validate(context, value).is_ok() {
                     if one_of_is_valid {
-                        return generic_error!("Value matched multiple schemas in `oneOf`!");
+                        return Err(generic_error!("Value matched multiple schemas in `oneOf`!"));
                     }
                     one_of_is_valid = true;
                 }
@@ -521,7 +525,7 @@ impl Validator for OneOfSchema {
             if one_of_is_valid {
                 Ok(())
             } else {
-                generic_error!("None of the schemas in `oneOf` matched!")
+                Err(generic_error!("None of the schemas in `oneOf` matched!"))
             }
         }
     }

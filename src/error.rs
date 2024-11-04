@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-#[derive(Error, Debug, PartialEq)]
+#[derive(Clone, Debug, Error, PartialEq)]
 pub enum YamlSchemaError {
     #[error("Not yet implemented!")]
     NotYetImplemented,
@@ -13,10 +13,10 @@ pub enum YamlSchemaError {
 #[macro_export]
 macro_rules! generic_error {
     ($s:literal, $($e:expr),+) => {
-        Err(YamlSchemaError::GenericError(format!($s, $($e),+)))
+        YamlSchemaError::GenericError(format!($s, $($e),+))
     };
     ($s:literal) => {
-        Err(YamlSchemaError::GenericError($s.to_string()))
+        YamlSchemaError::GenericError($s.to_string())
     };
 }
 
