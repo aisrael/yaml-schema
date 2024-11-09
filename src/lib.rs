@@ -3,12 +3,11 @@ use std::fmt;
 
 use serde::{Deserialize, Serialize};
 
-pub mod context;
 pub mod engine;
 #[macro_use]
 pub mod error;
 
-pub use context::Context;
+pub use engine::context::Context;
 pub use engine::Engine;
 pub use error::YamlSchemaError;
 

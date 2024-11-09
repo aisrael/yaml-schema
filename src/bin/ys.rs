@@ -16,6 +16,9 @@ pub struct Opts {
     /// The schema to validate against
     #[arg(short = 'f', long = "schema")]
     pub schemas: Vec<String>,
+    /// The schema to validate against
+    #[arg(long = "fail-fast", default_value = "true")]
+    pub fail_fast: bool,
     /// The YAML file to validate
     pub file: Option<String>,
 }
@@ -27,6 +30,7 @@ pub enum Commands {
 }
 
 fn main() {
+    env_logger::init();
     let opts = Opts::parse();
     if let Some(comand) = opts.command {
         match comand {
@@ -55,8 +59,24 @@ fn command_validate(opts: Opts) -> Result<(), anyhow::Error> {
     let engine = Engine::new(&schema);
     let yaml_file = std::fs::File::open(opts.file.unwrap())?;
     let yaml: serde_yaml::Value = serde_yaml::from_reader(yaml_file)?;
-    match engine.evaluate(&yaml) {
-        Ok(_) => Ok(()),
+    match engine.evaluate(&yaml, opts.fail_fast) {
+        Ok(context) => {
+            let errors = context.errors.borrow();
+            if errors.is_empty() {
+                Ok(())
+            } else {
+                let error_messages: Vec<String> = errors
+                    .iter()
+                    .map(|validation_error| {
+                        format!("{}: {}", validation_error.path, validation_error.error)
+                    })
+                    .collect();
+                Err(anyhow::anyhow!(
+                    "Validation failed:\n{}",
+                    error_messages.join("\n")
+                ))
+            }
+        }
         Err(e) => Err(e.into()),
     }
 }

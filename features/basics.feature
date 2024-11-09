@@ -65,7 +65,7 @@ Feature: Basic YAML schema
       data: structure
       ```
 
-  Scenario: "type: foo" should error
+  Scenario: "type: foo" should error ZZZ
     Given a YAML schema:
       ```
       type: foo
@@ -74,8 +74,7 @@ Feature: Basic YAML schema
       ```
       42
       ```
-    And the error should be a GenericError
-    And the error message should be "Unknown type 'foo'!"
+    And it should fail with "Unknown type 'foo'!"
 
   Scenario: "type: string" should accept strings
     Given a YAML schema:
@@ -127,7 +126,7 @@ Feature: Basic YAML schema
       data: structure
       ```
 
-  Scenario: "type: object" should validate properties
+  Scenario: "type: object" should validate properties ZZZ
     Given a YAML schema:
       ```
       type: object
@@ -152,3 +151,4 @@ Feature: Basic YAML schema
       foo: 42
       bar: "I'm a string"
       ```
+    And the error message should be ".foo: Expected a string, but got: Number(42)"

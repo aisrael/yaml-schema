@@ -3,9 +3,13 @@ use log::debug;
 use crate::error::YamlSchemaError;
 use crate::{
     format_vec, generic_error, not_yet_implemented, AdditionalProperties, ArrayItemsValue,
-    ConstSchema, Context, EnumSchema, OneOfSchema, TypeValue, TypedSchema, YamlSchema,
-    YamlSchemaNumber,
+    ConstSchema, EnumSchema, OneOfSchema, TypeValue, TypedSchema, YamlSchema, YamlSchemaNumber,
 };
+
+pub mod context;
+pub mod validation;
+pub use context::Context;
+pub use validation::ValidationError;
 
 pub struct Engine<'a> {
     pub schema: &'a YamlSchema,
@@ -16,10 +20,15 @@ impl<'a> Engine<'a> {
         Engine { schema }
     }
 
-    pub fn evaluate(&self, yaml: &serde_yaml::Value) -> Result<(), YamlSchemaError> {
+    pub fn evaluate(
+        &self,
+        yaml: &serde_yaml::Value,
+        fail_fast: bool,
+    ) -> Result<Context, YamlSchemaError> {
         debug!("Engine is running");
-        let mut context = Context::new(self.schema);
-        self.schema.validate(&mut context, yaml)
+        let mut context = Context::new(self.schema, fail_fast);
+        self.schema.validate(&mut context, yaml)?;
+        Ok(context)
     }
 }
 
@@ -42,11 +51,10 @@ impl Validator for YamlSchema {
         match self {
             YamlSchema::Empty => Ok(()),
             YamlSchema::Boolean(boolean) => {
-                if *boolean {
-                    Ok(())
-                } else {
-                    Err(generic_error!("Schema is `false`!"))
+                if !*boolean {
+                    context.add_error("Schema is `false`!".to_string());
                 }
+                Ok(())
             }
             YamlSchema::Const(const_schema) => const_schema.validate(context, value),
             YamlSchema::TypedSchema(typed_schema) => {
@@ -72,15 +80,21 @@ impl Validator for TypedSchema {
                 serde_yaml::Value::String(ref s) => match s.as_str() {
                     "array" => self.validate_array(context, value),
                     "boolean" => self.validate_boolean(value),
-                    "integer" => self.validate_integer(value),
-                    "number" => self.validate_number(value),
+                    "integer" => {
+                        self.validate_integer(context, value);
+                        Ok(())
+                    }
+                    "number" => {
+                        self.validate_number(context, value);
+                        Ok(())
+                    }
                     "object" => self.validate_object(context, value),
-                    "string" => self.validate_string(value),
+                    "string" => self.validate_string(context, value),
                     _ => Err(generic_error!("Unknown type '{}'!", s)),
                 },
                 serde_yaml::Value::Null => {
                     if !value.is_null() {
-                        return Err(generic_error!("Expected a value, but got: {:?}", value));
+                        context.add_error(format!("Expected a value, but got: {:?}", value));
                     }
                     Ok(())
                 }
@@ -101,49 +115,54 @@ impl TypedSchema {
         Ok(())
     }
 
-    fn validate_integer(&self, value: &serde_yaml::Value) -> Result<(), YamlSchemaError> {
-        if !value.is_i64() {
-            if value.is_f64() {
-                let f = value.as_f64().unwrap();
-                if f.fract() == 0.0 {
-                    return self.validate_number_i64(f as i64);
-                } else {
-                    return Err(generic_error!("Expected an integer, but got: {:?}", value));
+    fn validate_integer(&self, context: &mut Context, value: &serde_yaml::Value) {
+        match value.as_i64() {
+            Some(i) => self.validate_number_i64(context, i),
+            None => {
+                if value.is_f64() {
+                    let f = value.as_f64().unwrap();
+                    if f.fract() == 0.0 {
+                        return self.validate_number_i64(context, f as i64);
+                    } else {
+                        context.add_error(format!("Expected an integer, but got: {:?}", value));
+                    }
                 }
+                context.add_error(format!("Expected an integer, but got: {:?}", value));
             }
-            return Err(generic_error!("Expected an integer, but got: {:?}", value));
         }
-        let i = value.as_i64().unwrap();
-        self.validate_number_i64(i)
     }
 
-    fn validate_number(&self, value: &serde_yaml::Value) -> Result<(), YamlSchemaError> {
+    fn validate_number(&self, context: &mut Context, value: &serde_yaml::Value) {
         if value.is_i64() {
             match value.as_i64() {
-                Some(i) => self.validate_number_i64(i),
-                None => Err(generic_error!("Expected an integer, but got: {:?}", value)),
+                Some(i) => self.validate_number_i64(context, i),
+                None => {
+                    context.add_error(format!("Expected an integer, but got: {:?}", value));
+                }
             }
         } else if value.is_f64() {
             match value.as_f64() {
-                Some(f) => self.validate_number_f64(f),
-                None => Err(generic_error!("Expected a float, but got: {:?}", value)),
+                Some(f) => self.validate_number_f64(context, f),
+                None => {
+                    context.add_error(format!("Expected a float, but got: {:?}", value));
+                }
             }
         } else {
-            return Err(generic_error!("Expected a number, but got: {:?}", value));
+            context.add_error(format!("Expected a number, but got: {:?}", value));
         }
     }
 
-    fn validate_number_i64(&self, i: i64) -> Result<(), YamlSchemaError> {
+    fn validate_number_i64(&self, context: &mut Context, i: i64) {
         if let Some(minimum) = &self.minimum {
             match minimum {
                 YamlSchemaNumber::Integer(min) => {
                     if i < *min {
-                        return Err(generic_error!("Number is too small!"));
+                        context.add_error("Number is too small!".to_string());
                     }
                 }
                 YamlSchemaNumber::Float(min) => {
                     if (i as f64) < *min {
-                        return Err(generic_error!("Number is too small!"));
+                        context.add_error("Number is too small!".to_string());
                     }
                 }
             }
@@ -152,12 +171,12 @@ impl TypedSchema {
             match maximum {
                 YamlSchemaNumber::Integer(max) => {
                     if i > *max {
-                        return Err(generic_error!("Number is too big!"));
+                        context.add_error("Number is too big!".to_string());
                     }
                 }
                 YamlSchemaNumber::Float(max) => {
                     if (i as f64) > *max {
-                        return Err(generic_error!("Number is too big!"));
+                        context.add_error("Number is too big!".to_string());
                     }
                 }
             }
@@ -166,30 +185,28 @@ impl TypedSchema {
             match multiple_of {
                 YamlSchemaNumber::Integer(multiple) => {
                     if i % *multiple != 0 {
-                        return Err(generic_error!("Number is not a multiple of {}!", multiple));
+                        context.add_error(format!("Number is not a multiple of {}!", multiple));
                     }
                 }
                 YamlSchemaNumber::Float(multiple) => {
                     if (i as f64) % *multiple != 0.0 {
-                        return Err(generic_error!("Number is not a multiple of {}!", multiple));
+                        context.add_error(format!("Number is not a multiple of {}!", multiple));
                     }
                 }
             }
         }
-        Ok(())
     }
-
-    fn validate_number_f64(&self, f: f64) -> Result<(), YamlSchemaError> {
+    fn validate_number_f64(&self, context: &mut Context, f: f64) {
         if let Some(minimum) = &self.minimum {
             match minimum {
                 YamlSchemaNumber::Integer(min) => {
                     if f < *min as f64 {
-                        return Err(generic_error!("Number is too small!"));
+                        context.add_error("Number is too small!".to_string());
                     }
                 }
                 YamlSchemaNumber::Float(min) => {
                     if f < *min {
-                        return Err(generic_error!("Number is too small!"));
+                        context.add_error("Number is too small!".to_string());
                     }
                 }
             }
@@ -198,41 +215,57 @@ impl TypedSchema {
             match maximum {
                 YamlSchemaNumber::Integer(max) => {
                     if f > *max as f64 {
-                        return Err(generic_error!("Number is too big!"));
+                        context.add_error("Number is too big!".to_string());
                     }
                 }
                 YamlSchemaNumber::Float(max) => {
                     if f > *max {
-                        return Err(generic_error!("Number is too big!"));
+                        context.add_error("Number is too big!".to_string());
                     }
                 }
             }
         }
-        Ok(())
     }
 
     /// Validate the string according to the schema rules
-    fn validate_string(&self, value: &serde_yaml::Value) -> Result<(), YamlSchemaError> {
-        let yaml_string = value.as_str().ok_or_else(|| {
-            YamlSchemaError::GenericError(format!("Expected a string, but got: {:?}", value))
-        })?;
+    fn validate_string(
+        &self,
+        context: &mut Context,
+        value: &serde_yaml::Value,
+    ) -> Result<(), YamlSchemaError> {
+        let yaml_string = match value.as_str() {
+            Some(s) => s,
+            None => {
+                let error = format!("Expected a string, but got: {:?}", value);
+                context.add_error(error);
+                // We can't proceed with the validation if the value is not a string
+                return Ok(());
+            }
+        };
         if let Some(min_length) = &self.min_length {
             if yaml_string.len() < *min_length {
-                return Err(generic_error!("String is too short!"));
+                context.add_error("String is too short!".to_string());
             }
         }
         if let Some(max_length) = &self.max_length {
             if yaml_string.len() > *max_length {
-                return Err(generic_error!("String is too long!"));
+                context.add_error("String is too long!".to_string());
             }
         }
         if let Some(pattern) = &self.pattern {
-            let re = regex::Regex::new(pattern).map_err(|e| {
-                YamlSchemaError::GenericError(format!("Invalid regular expression pattern: {}", e))
-            })?;
-            if !re.is_match(yaml_string) {
-                return Err(generic_error!("String does not match regex!"));
-            }
+            match regex::Regex::new(pattern) {
+                Ok(re) => {
+                    if !re.is_match(yaml_string) {
+                        context.add_error("String does not match regex!".to_string());
+                    }
+                }
+                Err(e) => {
+                    return Err(YamlSchemaError::GenericError(format!(
+                        "Invalid regular expression pattern: {}",
+                        e
+                    )))
+                }
+            };
         }
         Ok(())
     }
@@ -258,7 +291,19 @@ impl TypedSchema {
             // First, we check the explicitly defined properties, and validate against it if found
             if let Some(properties) = &self.properties {
                 if properties.contains_key(&key) {
-                    match properties[&key].validate(context, value) {
+                    debug!(
+                        "Validating property '{}' with schema: {}",
+                        key, properties[&key]
+                    );
+                    debug!("context.path: {}", context.path());
+                    debug!("context.errors: {}", context.errors.borrow().len());
+                    let mut new_context = context.append_path(&key);
+                    debug!("new_context.path: {}", new_context.path());
+                    debug!("new_context.errors: {}", new_context.errors.borrow().len());
+                    let result = properties[&key].validate(&mut new_context, value);
+                    debug!("new_context.errors: {}", new_context.errors.borrow().len());
+                    debug!("context.errors: {}", context.errors.borrow().len());
+                    match result {
                         Err(e) => return Err(e),
                         Ok(_) => continue,
                     }
@@ -314,7 +359,7 @@ impl TypedSchema {
                         ))
                     })?;
                     if re.is_match(key.as_str()) {
-                        schema.validate(context, value)?
+                        schema.validate(context, value)?;
                     }
                 }
             }
@@ -460,13 +505,11 @@ impl Validator for ConstSchema {
         );
         let expected_value = &self.r#const;
         if expected_value != value {
-            let error = generic_error!(
+            let error = format!(
                 "Const validation failed, expected: {:?}, got: {:?}",
-                expected_value,
-                value
+                expected_value, value
             );
-            context.add_error(error.clone());
-            return Err(error);
+            context.add_error(error);
         }
         Ok(())
     }
@@ -496,9 +539,8 @@ impl Validator for EnumSchema {
                 .map(format_serde_yaml_value)
                 .collect::<Vec<String>>()
                 .join(", ");
-            let error = generic_error!("Value {} is not in the enum: [{}]", value_str, enum_values);
-            context.add_error(error.clone());
-            return Err(error);
+            let error = format!("Value {} is not in the enum: [{}]", value_str, enum_values);
+            context.add_error(error);
         }
         Ok(())
     }
@@ -510,24 +552,35 @@ impl Validator for OneOfSchema {
         context: &mut Context,
         value: &serde_yaml::Value,
     ) -> Result<(), YamlSchemaError> {
-        {
-            let schemas: &Vec<YamlSchema> = &self.one_of;
-            let mut one_of_is_valid = false;
-            for schema in schemas {
-                debug!("Validating value: {:?} against schema: {}", value, schema);
-                if schema.validate(context, value).is_ok() {
-                    if one_of_is_valid {
-                        return Err(generic_error!("Value matched multiple schemas in `oneOf`!"));
+        let schemas: &Vec<YamlSchema> = &self.one_of;
+        let mut one_of_is_valid = false;
+        for schema in schemas {
+            debug!(
+                "OneOf: Validating value: {:?} against schema: {}",
+                value, schema
+            );
+            let mut sub_context = Context::new(schema, context.fail_fast);
+            match schema.validate(&mut sub_context, value) {
+                Ok(_) => {
+                    if !sub_context.has_errors() {
+                        if one_of_is_valid {
+                            context.add_error("Value matched multiple schemas in `oneOf`!");
+                            if context.fail_fast {
+                                break;
+                            }
+                        }
+                        one_of_is_valid = true;
                     }
-                    one_of_is_valid = true;
+                }
+                Err(e) => {
+                    return Err(e);
                 }
             }
-            if one_of_is_valid {
-                Ok(())
-            } else {
-                Err(generic_error!("None of the schemas in `oneOf` matched!"))
-            }
         }
+        if !one_of_is_valid {
+            context.add_error("None of the schemas in `oneOf` matched!");
+        }
+        Ok(())
     }
 }
 
@@ -542,19 +595,22 @@ mod tests {
     fn test_const() {
         let const_schema = ConstSchema::new("United States of America");
         let yaml_schema = YamlSchema::Const(const_schema);
-        let mut context = Context::new(&yaml_schema);
+        let mut context = Context::new(&yaml_schema, true);
         assert!(yaml_schema
             .validate(
                 &mut context,
                 &serde_yaml::Value::String("United States of America".to_string())
             )
             .is_ok());
-        assert!(yaml_schema
-            .validate(
-                &mut context,
-                &serde_yaml::Value::String("Canada".to_string())
-            )
-            .is_err());
+        assert!(!context.has_errors());
+        let _ = yaml_schema.validate(
+            &mut context,
+            &serde_yaml::Value::String("Canada".to_string()),
+        );
+        assert!(context.has_errors());
+        let error = context.errors.borrow_mut().pop().unwrap();
+        assert_eq!(error.error, "Const validation failed, expected: String(\"United States of America\"), got: String(\"Canada\")");
+
         let schema = TypedSchema::object(
             vec![(
                 "country".to_string(),
@@ -572,6 +628,7 @@ mod tests {
         .unwrap();
         let result = yaml_schema.validate(&mut context, &yaml);
         assert!(result.is_ok());
+        assert!(!context.has_errors());
 
         let parsed_yaml_schema: YamlSchema = serde_yaml::from_str(
             r#"
@@ -584,6 +641,40 @@ mod tests {
             &serde_yaml::Value::String("United States of America".to_string()),
         );
         assert!(result.is_ok());
+        assert!(!context.has_errors());
+    }
+
+    #[test]
+    fn test_type_object_should_validate_properties() {
+        let schema = TypedSchema::object(
+            vec![
+                (
+                    "foo".to_string(),
+                    YamlSchema::TypedSchema(Box::new(TypedSchema::string())),
+                ),
+                (
+                    "bar".to_string(),
+                    YamlSchema::TypedSchema(Box::new(TypedSchema::number())),
+                ),
+            ]
+            .into_iter()
+            .collect(),
+        );
+        let yaml_schema = YamlSchema::TypedSchema(Box::new(schema));
+        let yaml = serde_yaml::from_str(
+            r#"
+            foo: 42
+            bar: "I'm a string"
+            "#,
+        )
+        .unwrap();
+        let mut context = Context::new(&yaml_schema, true);
+        let result = yaml_schema.validate(&mut context, &yaml);
+        assert!(result.is_ok());
+        assert!(context.has_errors());
+        for error in context.errors.borrow().iter() {
+            println!("Error: {:?}", error.error);
+        }
     }
 
     #[test]
@@ -605,7 +696,7 @@ mod tests {
         "#,
         )
         .unwrap();
-        assert!(engine.evaluate(&yaml).is_ok());
+        assert!(engine.evaluate(&yaml, true).is_ok());
     }
 
     #[test]
@@ -626,7 +717,11 @@ mod tests {
         "#,
         )
         .unwrap();
-        assert!(engine.evaluate(&yaml).is_ok());
+        println!("Testing valid yaml");
+        let result = engine.evaluate(&yaml, true);
+        assert!(result.is_ok());
+        let context = result.unwrap();
+        assert!(!context.has_errors(), "Expected no errors, but got some");
 
         let invalid_yaml = serde_yaml::from_str(
             r#"
@@ -634,8 +729,17 @@ mod tests {
         "#,
         )
         .unwrap();
-        let invalid_result = engine.evaluate(&invalid_yaml);
-        assert!(invalid_result.is_err());
+        println!("Testing additional number property should fail");
+        let invalid_result = engine.evaluate(&invalid_yaml, true);
+        assert!(
+            invalid_result.is_ok(),
+            "Expected validation to succeed, but got an error"
+        );
+        let context = invalid_result.unwrap();
+        assert!(context.has_errors(), "Expected errors, but got none");
+        let error = context.errors.borrow_mut().pop().unwrap();
+        println!("Error: {:?}", error.error);
+        assert_eq!(error.error, "Expected a string, but got: Number(42)");
     }
 
     #[test]
@@ -671,7 +775,7 @@ mod tests {
         "#,
         )
         .unwrap();
-        let result = engine.evaluate(&yaml);
+        let result = engine.evaluate(&yaml, true);
         if let Err(e) = result {
             panic!("Error: {:?}", e);
         }
@@ -701,9 +805,13 @@ mod tests {
         )
         .unwrap();
         let yaml_schema = YamlSchema::OneOf(one_of_schema);
-        let mut context = Context::new(&yaml_schema);
+        let mut context = Context::new(&yaml_schema, true);
         let result = yaml_schema.validate(&mut context, &yaml);
         assert!(result.is_ok());
+        for error in context.errors.borrow().iter() {
+            println!("Error: {:?}", error.error);
+        }
+        assert!(!context.has_errors(), "Expected no errors, but got some");
     }
 
     #[test]
@@ -742,7 +850,7 @@ mod tests {
         .unwrap();
 
         let yaml_schema = YamlSchema::typed_schema(pattern_properties_schema);
-        let mut context = Context::new(&yaml_schema);
+        let mut context = Context::new(&yaml_schema, true);
         let result = yaml_schema.validate(&mut context, &yaml);
         assert!(result.is_ok());
     }

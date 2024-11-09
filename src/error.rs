@@ -1,5 +1,6 @@
 use thiserror::Error;
 
+/// Unexpected errors that can occur during the validation of a YAML schema
 #[derive(Clone, Debug, Error, PartialEq)]
 pub enum YamlSchemaError {
     #[error("Not yet implemented!")]
