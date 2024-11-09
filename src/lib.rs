@@ -124,6 +124,10 @@ impl YamlSchema {
         })
     }
 
+    pub fn one_of(schemas: Vec<YamlSchema>) -> YamlSchema {
+        YamlSchema::OneOf(OneOfSchema { one_of: schemas })
+    }
+
     pub fn typed_schema(schema: TypedSchema) -> YamlSchema {
         YamlSchema::TypedSchema(Box::new(schema))
     }

@@ -96,7 +96,6 @@ async fn it_should_fail_with(world: &mut BasicsWorld, expected_error_message: St
     }
 }
 
-
 #[tokio::main]
 async fn main() {
     env_logger::builder()

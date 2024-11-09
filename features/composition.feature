@@ -39,6 +39,8 @@ Feature: Schema Composition
               properties:
                 name:
                   type: string
+              required:
+                - name
       additionalProperties: false
       ```
     Then it should accept:

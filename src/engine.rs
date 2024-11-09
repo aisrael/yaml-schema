@@ -73,7 +73,7 @@ impl Validator for TypedSchema {
         context: &mut Context,
         value: &serde_yaml::Value,
     ) -> Result<(), YamlSchemaError> {
-        debug!("Validating value: {:?}", value);
+        debug!("TypedSchema: Validating value: {:?}", value);
 
         match self.r#type {
             TypeValue::Single(ref v) => match v {
@@ -276,13 +276,21 @@ impl TypedSchema {
         context: &mut Context,
         value: &serde_yaml::Value,
     ) -> Result<(), YamlSchemaError> {
-        let mapping = value.as_mapping().ok_or_else(|| {
-            YamlSchemaError::GenericError(format!(
-                "Expected an object, but got: {}",
-                format_serde_yaml_value(value)
-            ))
-        })?;
+        debug!("Validating object: {:?}", value);
+        match value.as_mapping() {
+            Some(mapping) => self.validate_object_mapping(context, mapping),
+            None => {
+                context.add_error("Expected an object, but got: None");
+                Ok(())
+            }
+        }
+    }
 
+    fn validate_object_mapping(
+        &self,
+        context: &mut Context,
+        mapping: &serde_yaml::Mapping,
+    ) -> Result<(), YamlSchemaError> {
         for (k, value) in mapping {
             let key = match k {
                 serde_yaml::Value::String(s) => s.clone(),
@@ -342,9 +350,9 @@ impl TypedSchema {
                         // if the value is not valid for any of the allowed types, then we return an error immediately
                         if is_invalid {
                             return Err(YamlSchemaError::GenericError(format!(
-                                "Additional property '{}' is not allowed. No allowed types matched!",
-                                key
-                            )));
+                        "Additional property '{}' is not allowed. No allowed types matched!",
+                        key
+                    )));
                         }
                     }
                 }
@@ -420,7 +428,8 @@ impl TypedSchema {
         value: &serde_yaml::Value,
     ) -> Result<(), YamlSchemaError> {
         if !value.is_sequence() {
-            return Err(generic_error!("Expected an array, but got: {:?}", value));
+            context.add_error(format!("Expected an array, but got: {:?}", value));
+            return Ok(());
         }
 
         let array = value.as_sequence().unwrap();
@@ -562,6 +571,7 @@ impl Validator for OneOfSchema {
             let mut sub_context = Context::new(schema, context.fail_fast);
             match schema.validate(&mut sub_context, value) {
                 Ok(_) => {
+                    debug!("sub_context.errors: {}", sub_context.errors.borrow().len());
                     if !sub_context.has_errors() {
                         if one_of_is_valid {
                             context.add_error("Value matched multiple schemas in `oneOf`!");
@@ -812,6 +822,69 @@ mod tests {
             println!("Error: {:?}", error.error);
         }
         assert!(!context.has_errors(), "Expected no errors, but got some");
+    }
+
+    #[test]
+    fn test_child_of_one_of() {
+        let object_schema = TypedSchema {
+            r#type: TypeValue::object(),
+            properties: Some(HashMap::from([(
+                "name".to_string(),
+                YamlSchema::TypedSchema(Box::new(TypedSchema::string())),
+            )])),
+            required: Some(vec!["name".to_string()]),
+            ..Default::default()
+        };
+        let yaml_schema = YamlSchema::typed_schema(object_schema);
+        let mut context = Context::new(&yaml_schema, true);
+        let yaml = serde_yaml::from_str(
+            r#"
+            name: "John Doe"
+        "#,
+        )
+        .unwrap();
+        let result = yaml_schema.validate(&mut context, &yaml);
+        assert!(result.is_ok());
+        assert!(!context.has_errors(), "Expected no errors, but got some");
+
+        let yaml = serde_yaml::from_str(r#"null"#).unwrap();
+        let result = yaml_schema.validate(&mut context, &yaml);
+        assert!(result.is_ok());
+        assert!(context.has_errors(), "Expected errors, but got none");
+    }
+
+    #[test]
+    fn test_one_of_null_or_object() {
+        let object_schema = TypedSchema {
+            r#type: TypeValue::object(),
+            properties: Some(HashMap::from([(
+                "name".to_string(),
+                YamlSchema::TypedSchema(Box::new(TypedSchema::string())),
+            )])),
+            required: Some(vec!["name".to_string()]),
+            ..Default::default()
+        };
+        let schemas: Vec<YamlSchema> = vec![
+            YamlSchema::TypedSchema(Box::new(TypedSchema::null())),
+            YamlSchema::TypedSchema(Box::new(object_schema)),
+        ];
+        let one_of_schema = YamlSchema::one_of(schemas);
+        let properties = HashMap::from([("child".to_string(), one_of_schema)]);
+        let yaml_schema = YamlSchema::typed_schema(TypedSchema {
+            r#type: TypeValue::object(),
+            properties: Some(properties),
+            additional_properties: Some(AdditionalProperties::Boolean(false)),
+            ..Default::default()
+        });
+        let mut context = Context::new(&yaml_schema, true);
+        let yaml = serde_yaml::from_str(
+            r#"
+            child: null
+        "#,
+        )
+        .unwrap();
+        let result = yaml_schema.validate(&mut context, &yaml);
+        assert!(result.is_ok());
     }
 
     #[test]

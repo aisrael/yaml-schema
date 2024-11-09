@@ -65,7 +65,7 @@ Feature: Basic YAML schema
       data: structure
       ```
 
-  Scenario: "type: foo" should error ZZZ
+  Scenario: "type: foo" should error
     Given a YAML schema:
       ```
       type: foo
