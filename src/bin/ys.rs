@@ -40,18 +40,19 @@ fn main() {
         }
     } else {
         match command_validate(opts) {
-            Ok(_) => {
-                println!("Validation successful");
+            Ok(return_code) => {
+                std::process::exit(return_code);
             }
             Err(e) => {
-                eprintln!("Validation failed: {}", e);
+                eprintln!("Validation error: {}", e);
+                std::process::exit(1);
             }
         }
     }
 }
 
 /// The `ys validate` command
-fn command_validate(opts: Opts) -> Result<(), anyhow::Error> {
+fn command_validate(opts: Opts) -> Result<i32, anyhow::Error> {
     // Currently, we only support a single schema file
     // TODO: Support multiple schema files
     let schema_file = std::fs::File::open(opts.schemas.first().unwrap())?;
@@ -63,7 +64,8 @@ fn command_validate(opts: Opts) -> Result<(), anyhow::Error> {
         Ok(context) => {
             let errors = context.errors.borrow();
             if errors.is_empty() {
-                Ok(())
+                println!("Validation successful");
+                Ok(0)
             } else {
                 let error_messages: Vec<String> = errors
                     .iter()
@@ -71,10 +73,11 @@ fn command_validate(opts: Opts) -> Result<(), anyhow::Error> {
                         format!("{}: {}", validation_error.path, validation_error.error)
                     })
                     .collect();
-                Err(anyhow::anyhow!(
-                    "Validation failed:\n{}",
-                    error_messages.join("\n")
-                ))
+                println!("Validation failed:");
+                for error in error_messages {
+                    println!("  {}", error);
+                }
+                Ok(1)
             }
         }
         Err(e) => Err(e.into()),
