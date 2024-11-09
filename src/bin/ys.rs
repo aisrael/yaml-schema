@@ -44,7 +44,7 @@ fn main() {
                 std::process::exit(return_code);
             }
             Err(e) => {
-                eprintln!("Validation error: {}", e);
+                eprintln!("Validation failed: {}", e);
                 std::process::exit(1);
             }
         }
@@ -73,7 +73,7 @@ fn command_validate(opts: Opts) -> Result<i32, anyhow::Error> {
                         format!("{}: {}", validation_error.path, validation_error.error)
                     })
                     .collect();
-                println!("Validation failed:");
+                println!("Validation encountered errors:");
                 for error in error_messages {
                     println!("  {}", error);
                 }
