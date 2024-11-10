@@ -6,11 +6,13 @@ use serde::{Deserialize, Serialize};
 pub mod engine;
 #[macro_use]
 pub mod error;
+pub mod schemas;
 pub mod validation;
 
 pub use engine::context::Context;
 pub use engine::Engine;
 pub use error::YamlSchemaError;
+pub use schemas::one_of::OneOfSchema;
 
 // Returns the library version, which reflects the crate version
 pub fn version() -> String {
@@ -30,12 +32,6 @@ pub enum YamlSchema {
     // Need to put TypedSchema last, because not specifying `type:`
     // is interpreted as `type: null` (None)
     TypedSchema(Box<TypedSchema>),
-}
-
-#[derive(Debug, Default, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct OneOfSchema {
-    pub one_of: Vec<YamlSchema>,
 }
 
 /// A typed schema is a schema that has a type
@@ -153,12 +149,6 @@ impl fmt::Display for YamlSchema {
     }
 }
 
-impl fmt::Display for OneOfSchema {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "oneOf:{}", format_vec(&self.one_of))
-    }
-}
-
 impl TypedSchema {
     pub fn null() -> TypedSchema {
         TypedSchema {
@@ -258,6 +248,7 @@ where
     format!("{{ {} }}", items.join(", "))
 }
 
+/// Formats a vector of values as a string, by joining them with commas
 fn format_vec<V>(vec: &[V]) -> String
 where
     V: fmt::Display,
