@@ -7,8 +7,10 @@ use crate::{
 };
 
 pub mod context;
-pub use context::Context;
+
+use super::validation::strings::validate_string;
 pub use crate::validation::ValidationError;
+pub use context::Context;
 
 pub struct Engine<'a> {
     pub schema: &'a YamlSchema,
@@ -232,41 +234,20 @@ impl TypedSchema {
         context: &mut Context,
         value: &serde_yaml::Value,
     ) -> Result<(), YamlSchemaError> {
-        let yaml_string = match value.as_str() {
-            Some(s) => s,
-            None => {
-                let error = format!("Expected a string, but got: {:?}", value);
-                context.add_error(error);
-                // We can't proceed with the validation if the value is not a string
-                return Ok(());
-            }
-        };
-        if let Some(min_length) = &self.min_length {
-            if yaml_string.len() < *min_length {
-                context.add_error("String is too short!".to_string());
-            }
-        }
-        if let Some(max_length) = &self.max_length {
-            if yaml_string.len() > *max_length {
-                context.add_error("String is too long!".to_string());
-            }
-        }
-        if let Some(pattern) = &self.pattern {
-            match regex::Regex::new(pattern) {
-                Ok(re) => {
-                    if !re.is_match(yaml_string) {
-                        context.add_error("String does not match regex!".to_string());
-                    }
+        match validate_string(
+            self.min_length,
+            self.max_length,
+            self.pattern.as_ref(),
+            value,
+        ) {
+            Ok(errors) => {
+                for error in errors {
+                    context.add_error(error);
                 }
-                Err(e) => {
-                    return Err(YamlSchemaError::GenericError(format!(
-                        "Invalid regular expression pattern: {}",
-                        e
-                    )))
-                }
-            };
+                Ok(())
+            }
+            Err(e) => Err(YamlSchemaError::GenericError(e.to_string())),
         }
-        Ok(())
     }
 
     /// Validate the object according to the schema rules

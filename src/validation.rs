@@ -1,4 +1,5 @@
 /// Validation engine for YamlSchema
+pub mod strings;
 
 /// A validation error simply contains a path and an error message
 #[derive(Debug)]
