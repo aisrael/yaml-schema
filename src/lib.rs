@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 pub mod engine;
 #[macro_use]
 pub mod error;
+pub mod validation;
 
 pub use engine::context::Context;
 pub use engine::Engine;

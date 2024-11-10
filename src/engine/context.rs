@@ -2,7 +2,7 @@ use crate::YamlSchema;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use super::validation::ValidationError;
+use crate::validation::ValidationError;
 
 /// The validation context
 pub struct Context<'a> {

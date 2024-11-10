@@ -7,9 +7,8 @@ use crate::{
 };
 
 pub mod context;
-pub mod validation;
 pub use context::Context;
-pub use validation::ValidationError;
+pub use crate::validation::ValidationError;
 
 pub struct Engine<'a> {
     pub schema: &'a YamlSchema,
