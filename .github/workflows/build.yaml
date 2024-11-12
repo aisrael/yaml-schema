@@ -10,6 +10,8 @@ env:
   RUST_TOOLCHAIN: 1.82.0
   CARGO_TERM_COLOR: always
 
+permissions:
+  contents: write
 
 defaults:
   run:
