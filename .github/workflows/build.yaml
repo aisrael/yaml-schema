@@ -112,6 +112,7 @@ jobs:
           mv ./target/$TARGET/release/$EXEC ./$EXEC
           tar -czf ./artifacts/$NAME-$TARGET-$TAG.tar.gz $EXEC
       - name: Archive artifact
+        if: startsWith(github.ref, 'refs/tags/')
         uses: actions/upload-artifact@v4
         with:
           name: ys-${{ matrix.TARGET }}
@@ -120,7 +121,7 @@ jobs:
 
   # deploys to github releases on tag
   release:
-    # if: startsWith(github.ref, 'refs/tags/')
+    if: startsWith(github.ref, 'refs/tags/')
     needs: build
     runs-on: ubuntu-latest
     steps:
@@ -130,7 +131,7 @@ jobs:
           path: ./artifacts
       - name: List
         run: find ./artifacts
-      # - name: Release
-      #   uses: softprops/action-gh-release@v2
-      #   with:
-      #     files: ./artifacts/*/*.tar.gz
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ./artifacts/*/*.tar.gz
