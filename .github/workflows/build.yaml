@@ -114,7 +114,7 @@ jobs:
       - name: Archive artifact
         uses: actions/upload-artifact@v4
         with:
-          name: result
+          name: result-${{ matrix.TARGET }}
           path: |
             ./artifacts
 
@@ -124,14 +124,13 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - name: Download artifacts
+      - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
-          name: result
           path: ./artifacts
       - name: List
         run: find ./artifacts
       - name: Release
         uses: softprops/action-gh-release@v2
         with:
-          files: ./artifacts/*.tar.gz
+          files: ./artifacts/*/*.tar.gz
