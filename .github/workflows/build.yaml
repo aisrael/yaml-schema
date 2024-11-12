@@ -110,7 +110,7 @@ jobs:
           mv ./target/$TARGET/release/$EXEC ./$EXEC
           tar -czf ./artifacts/$NAME-$TARGET-$TAG.tar.gz $EXEC
       - name: Archive artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: result
           path: |
@@ -123,7 +123,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download artifacts
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           name: result
           path: ./artifacts
