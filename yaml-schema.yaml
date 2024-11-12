@@ -27,3 +27,28 @@ properties:
   properties:
     description: The properties that are defined in the schema
     type: object
+    properties:
+      $schema:
+        type: object
+        properties:
+          description:
+            type: string
+          type:
+            enum:
+              - boolean
+              - object
+              - string
+    patternProperties:
+      "^[a-zA-Z0-9_-]+$":
+        type: object
+        properties:
+          description:
+            type: string
+
+  additionalProperties:
+    oneOf:
+      - type: boolean
+      - type: array
+        items:
+          type: string
+additionalProperties: false

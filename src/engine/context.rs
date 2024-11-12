@@ -31,7 +31,7 @@ impl<'a> Context<'a> {
         }
     }
 
-    pub fn add_error<V: Into<String>>(&mut self, error: V) {
+    pub fn add_error<V: Into<String>>(&self, error: V) {
         let path = self.path();
         self.errors.borrow_mut().push(ValidationError {
             path,
@@ -39,7 +39,7 @@ impl<'a> Context<'a> {
         });
     }
 
-    pub fn append_path<V: Into<String>>(&mut self, path: V) -> Context<'a> {
+    pub fn append_path<V: Into<String>>(&self, path: V) -> Context<'a> {
         let mut new_path = self.current_path.clone();
         new_path.push(path.into());
         Context {

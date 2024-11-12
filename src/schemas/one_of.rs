@@ -45,10 +45,10 @@ mod tests {
         let schema = OneOfSchema { one_of: schemas };
         println!("{}", schema);
         let root_schema = YamlSchema::OneOf(schema);
-        let mut context = Context::new(&root_schema, false);
+        let context = Context::new(&root_schema, false);
         assert!(root_schema
             .validate(
-                &mut context,
+                &context,
                 &serde_yaml::Value::Number(serde_yaml::Number::from(5.0))
             )
             .is_ok());
