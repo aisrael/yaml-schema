@@ -108,6 +108,7 @@ jobs:
           else
             TAG=$GITHUB_SHA
           fi
+          set -x
           mv ./target/$TARGET/release/$EXEC ./$EXEC
           tar -czf ./artifacts/$NAME-$TARGET-$TAG.tar.gz $EXEC
       - name: Archive artifact
