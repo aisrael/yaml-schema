@@ -50,7 +50,8 @@ jobs:
     needs: test
     runs-on: ${{ matrix.OS }}
     env:
-      NAME: yaml-schema
+      # The binary name
+      NAME: ys
       TARGET: ${{ matrix.TARGET }}
       OS: ${{ matrix.OS }}
     steps:
