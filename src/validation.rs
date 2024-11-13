@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 /// Validation engine for YamlSchema
 pub mod strings;
 
@@ -8,4 +10,11 @@ pub struct ValidationError {
     pub path: String,
     /// The error message
     pub error: String,
+}
+
+/// Display this ValidationErrors as "{path}: {error}"
+impl Display for ValidationError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}: {}", self.path, self.error)
+    }
 }

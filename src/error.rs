@@ -9,6 +9,17 @@ pub enum YamlSchemaError {
     YamlParsingError(#[from] yaml_rust2::ScanError),
     #[error("Generic YAML schema error: {0}")]
     GenericError(String),
+    #[error("Fail fast signal")]
+    FailFast,
+}
+
+#[macro_export]
+macro_rules! fail_fast {
+    ($context:expr) => {
+        if $context.fail_fast {
+            return Err(YamlSchemaError::FailFast);
+        }
+    };
 }
 
 #[macro_export]

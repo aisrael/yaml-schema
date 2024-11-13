@@ -31,9 +31,13 @@ impl<'a> Context<'a> {
         }
     }
 
+    pub fn push_error(&self, error: ValidationError) {
+        self.errors.borrow_mut().push(error);
+    }
+
     pub fn add_error<V: Into<String>>(&self, error: V) {
         let path = self.path();
-        self.errors.borrow_mut().push(ValidationError {
+        self.push_error(ValidationError {
             path,
             error: error.into(),
         });

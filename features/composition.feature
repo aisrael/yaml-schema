@@ -104,7 +104,7 @@ Feature: Schema Composition
       github:
         environments:
           development:
-            reviewers: true
+            reviewers: true # true is not one of the acceptable values
       ```
 
   Scenario: patternProperties with oneOf

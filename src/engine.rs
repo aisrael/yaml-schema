@@ -1,9 +1,10 @@
-use log::debug;
+use log::{debug, error};
 
 use crate::error::YamlSchemaError;
 use crate::{
-    format_vec, generic_error, not_yet_implemented, AdditionalProperties, ArrayItemsValue,
-    ConstSchema, EnumSchema, OneOfSchema, TypeValue, TypedSchema, YamlSchema, YamlSchemaNumber,
+    fail_fast, format_vec, generic_error, not_yet_implemented, AdditionalProperties,
+    ArrayItemsValue, ConstSchema, EnumSchema, OneOfSchema, TypeValue, TypedSchema, YamlSchema,
+    YamlSchemaNumber,
 };
 
 pub mod context;
@@ -28,8 +29,13 @@ impl<'a> Engine<'a> {
     ) -> Result<Context, YamlSchemaError> {
         debug!("Engine is running");
         let context = Context::new(self.schema, fail_fast);
-        self.schema.validate(&context, yaml)?;
-        Ok(context)
+        let result = self.schema.validate(&context, yaml);
+        debug!("Engine: result: {:?}", result);
+        debug!("Engine: context.errors: {}", context.errors.borrow().len());
+        match result {
+            Ok(()) | Err(YamlSchemaError::FailFast) => Ok(context),
+            Err(e) => Err(e),
+        }
     }
 }
 
@@ -44,8 +50,8 @@ impl Validator for YamlSchema {
         context: &Context,
         value: &serde_yaml::Value,
     ) -> Result<(), YamlSchemaError> {
-        debug!("self: {}", self);
-        debug!("Validating value: {:?}", value);
+        debug!("YamlSchema: self: {}", self);
+        debug!("YamlSchema: Validating value: {:?}", value);
         match self {
             YamlSchema::Empty => Ok(()),
             YamlSchema::Boolean(boolean) => {
@@ -56,7 +62,7 @@ impl Validator for YamlSchema {
             }
             YamlSchema::Const(const_schema) => const_schema.validate(context, value),
             YamlSchema::TypedSchema(typed_schema) => {
-                debug!("Schema value: {}", typed_schema);
+                debug!("YamlSchema: Schema value: {}", typed_schema);
                 typed_schema.validate(context, value)
             }
             YamlSchema::Enum(enum_schema) => enum_schema.validate(context, value),
@@ -113,6 +119,7 @@ impl TypedSchema {
     ) -> Result<(), YamlSchemaError> {
         if !value.is_bool() {
             context.add_error(format!("Expected a boolean, but got: {:?}", value));
+            fail_fast!(context);
         }
         Ok(())
     }
@@ -242,12 +249,20 @@ impl TypedSchema {
             value,
         ) {
             Ok(errors) => {
-                for error in errors {
-                    context.add_error(error);
+                if !errors.is_empty() {
+                    for error in errors {
+                        debug!("validate_string: error: {}", error);
+                        context.add_error(error);
+                    }
+                    fail_fast!(context);
                 }
                 Ok(())
             }
-            Err(e) => Err(YamlSchemaError::GenericError(e.to_string())),
+            Err(e) => {
+                let s = e.to_string();
+                error!("{}", s);
+                Err(YamlSchemaError::GenericError(s))
+            }
         }
     }
 
@@ -277,24 +292,17 @@ impl TypedSchema {
                 serde_yaml::Value::String(s) => s.clone(),
                 _ => k.as_str().unwrap_or_default().to_string(),
             };
+            debug!("validate_object_mapping: key: \"{}\"", key);
+            let sub_context = context.append_path(&key);
+
             // First, we check the explicitly defined properties, and validate against it if found
             if let Some(properties) = &self.properties {
-                if properties.contains_key(&key) {
-                    debug!(
-                        "Validating property '{}' with schema: {}",
-                        key, properties[&key]
-                    );
-                    debug!("context.path: {}", context.path());
-                    debug!("context.errors: {}", context.errors.borrow().len());
-                    let new_context = context.append_path(&key);
-                    debug!("new_context.path: {}", new_context.path());
-                    debug!("new_context.errors: {}", new_context.errors.borrow().len());
-                    let result = properties[&key].validate(&new_context, value);
-                    debug!("new_context.errors: {}", new_context.errors.borrow().len());
-                    debug!("context.errors: {}", context.errors.borrow().len());
+                if let Some(schema) = properties.get(&key) {
+                    debug!("Validating property '{}' with schema: {}", key, schema);
+                    let result = schema.validate(&sub_context, value);
                     match result {
-                        Err(e) => return Err(e),
                         Ok(_) => continue,
+                        Err(e) => return Err(e),
                     }
                 }
             }
@@ -312,25 +320,32 @@ impl TypedSchema {
                     AdditionalProperties::Type { r#type } => {
                         // get the list of allowed types
                         let allowed_types = r#type.as_list_of_allowed_types();
+                        debug!(
+                            "validate_object_mapping: allowed_types: {}",
+                            allowed_types.join(", ")
+                        );
+                        // TODO: Check if the value _is_ valid for any of the allow types
+                        // return Ok if so
+                        // return an error otherwise
                         // check if the value is _NOT_ valid for any of the allowed types
-                        let is_invalid = allowed_types.iter().any(|allowed_type| {
-                            let typed_schema = TypedSchema {
+                        let allowed = allowed_types.iter().all(|allowed_type| {
+                            let sub_schema = TypedSchema {
                                 r#type: TypeValue::from_string(allowed_type.clone()),
                                 ..Default::default()
                             };
                             debug!(
                                 "Validating additional property '{}' with schema: {:?}",
-                                key, typed_schema
+                                key, sub_schema
                             );
-                            let res = typed_schema.validate(context, value);
-                            res.is_err()
-                        });
-                        // if the value is not valid for any of the allowed types, then we return an error immediately
-                        if is_invalid {
+                            sub_schema.validate(&sub_context, value).is_ok()
+                        }); // if the value is not valid for any of the allowed types, then we return an error immediately
+                        if !allowed {
                             context.add_error(format!(
-                                "Additional property '{}' is not allowed. No allowed types matched!",
-                                key
-                            ));
+                                    "Additional property '{}' is not allowed. No allowed types matched!",
+                                    key
+                                )
+                            );
+                            fail_fast!(context);
                         }
                     }
                 }
@@ -407,6 +422,7 @@ impl TypedSchema {
     ) -> Result<(), YamlSchemaError> {
         if !value.is_sequence() {
             context.add_error(format!("Expected an array, but got: {:?}", value));
+            fail_fast!(context);
             return Ok(());
         }
 
@@ -547,26 +563,33 @@ impl Validator for OneOfSchema {
                 value, schema
             );
             let sub_context = Context::new(schema, context.fail_fast);
-            match schema.validate(&sub_context, value) {
-                Ok(_) => {
-                    debug!("sub_context.errors: {}", sub_context.errors.borrow().len());
-                    if !sub_context.has_errors() {
-                        if one_of_is_valid {
-                            context.add_error("Value matched multiple schemas in `oneOf`!");
-                            if context.fail_fast {
-                                break;
-                            }
-                        }
+            let sub_result = schema.validate(&sub_context, value);
+            match sub_result {
+                Ok(()) | Err(YamlSchemaError::FailFast) => {
+                    debug!(
+                        "OneOf: sub_context.errors: {}",
+                        sub_context.errors.borrow().len()
+                    );
+                    if sub_context.has_errors() {
+                        continue;
+                    }
+
+                    if one_of_is_valid {
+                        error!("OneOf: Value matched multiple schemas in `oneOf`!");
+                        context.add_error("Value matched multiple schemas in `oneOf`!");
+                        fail_fast!(context);
+                    } else {
                         one_of_is_valid = true;
                     }
                 }
-                Err(e) => {
-                    return Err(e);
-                }
+                Err(e) => return Err(e),
             }
         }
+        debug!("OneOf: one_of_is_valid: {}", one_of_is_valid);
         if !one_of_is_valid {
+            error!("OneOf: None of the schemas in `oneOf` matched!");
             context.add_error("None of the schemas in `oneOf` matched!");
+            fail_fast!(context);
         }
         Ok(())
     }
@@ -631,6 +654,14 @@ mod tests {
 
     #[test]
     fn test_type_object_should_validate_properties() {
+        // Equivalent to:
+        //
+        //   type: object
+        //   properties:
+        //     foo:
+        //       type: string
+        //     bar:
+        //       type: number
         let schema = TypedSchema::object(
             vec![
                 (
@@ -653,12 +684,17 @@ mod tests {
             "#,
         )
         .unwrap();
-        let context = Context::new(&yaml_schema, true);
+        let context = Context::new(&yaml_schema, false);
         let result = yaml_schema.validate(&context, &yaml);
         assert!(result.is_ok());
         assert!(context.has_errors());
-        for error in context.errors.borrow().iter() {
-            println!("Error: {:?}", error.error);
+        let errors = context.errors.borrow();
+        debug!("Got {} errors", errors.len());
+        assert_eq!(2, errors.len());
+        if !errors.is_empty() {
+            for error in errors.iter() {
+                debug!("test_type_object_should_validate_properties: {}", error);
+            }
         }
     }
 
@@ -723,8 +759,12 @@ mod tests {
         let context = invalid_result.unwrap();
         assert!(context.has_errors(), "Expected errors, but got none");
         let error = context.errors.borrow_mut().pop().unwrap();
-        println!("Error: {:?}", error.error);
-        assert_eq!(error.error, "Expected a string, but got: Number(42)");
+        println!("Error: {}", error);
+        assert_eq!(error.path, ""); // in the root
+        assert_eq!(
+            error.error,
+            "Additional property 'age' is not allowed. No allowed types matched!"
+        );
     }
 
     #[test]
