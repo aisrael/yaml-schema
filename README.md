@@ -98,6 +98,7 @@ Arguments:
 
 Options:
   -f, --schema <SCHEMAS>  The schema to validate against
+      --fail-fast         The schema to validate against
   -h, --help              Print help
   -V, --version           Print version
-```
+  ```
