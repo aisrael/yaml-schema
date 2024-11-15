@@ -1,7 +1,11 @@
+/// Validation engine for YamlSchema
 use std::fmt::Display;
 
-/// Validation engine for YamlSchema
+mod context;
+pub mod objects;
 pub mod strings;
+
+pub use context::Context;
 
 /// A validation error simply contains a path and an error message
 #[derive(Debug)]

@@ -1,17 +1,15 @@
 use log::{debug, error};
 
+use super::validation::objects::try_validate_value_against_properties;
+use super::validation::strings::validate_string;
 use crate::error::YamlSchemaError;
+pub use crate::validation::Context;
+pub use crate::validation::ValidationError;
 use crate::{
     fail_fast, format_vec, generic_error, not_yet_implemented, AdditionalProperties,
     ArrayItemsValue, ConstSchema, EnumSchema, OneOfSchema, TypeValue, TypedSchema, YamlSchema,
     YamlSchemaNumber,
 };
-
-pub mod context;
-
-use super::validation::strings::validate_string;
-pub use crate::validation::ValidationError;
-pub use context::Context;
 
 pub struct Engine<'a> {
     pub schema: &'a YamlSchema,
@@ -297,15 +295,11 @@ impl TypedSchema {
 
             // First, we check the explicitly defined properties, and validate against it if found
             if let Some(properties) = &self.properties {
-                if let Some(schema) = properties.get(&key) {
-                    debug!("Validating property '{}' with schema: {}", key, schema);
-                    let result = schema.validate(&sub_context, value);
-                    match result {
-                        Ok(_) => continue,
-                        Err(e) => return Err(e),
-                    }
+                if try_validate_value_against_properties(context, &key, value, properties)? {
+                    continue;
                 }
             }
+
             // Then, we check if additional properties are allowed or not
             if let Some(additional_properties) = &self.additional_properties {
                 match additional_properties {
@@ -350,6 +344,7 @@ impl TypedSchema {
                     }
                 }
             }
+            // Then we check if pattern_properties matches
             if let Some(pattern_properties) = &self.pattern_properties {
                 for (pattern, schema) in pattern_properties {
                     // TODO: compile the regex once instead of every time we're evaluating
@@ -364,6 +359,7 @@ impl TypedSchema {
                     }
                 }
             }
+            // Finally, we check if it matches property_names
             if let Some(property_names) = &self.property_names {
                 let re = regex::Regex::new(&property_names.pattern).map_err(|e| {
                     YamlSchemaError::GenericError(format!(

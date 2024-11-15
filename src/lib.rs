@@ -9,10 +9,10 @@ pub mod error;
 pub mod schemas;
 pub mod validation;
 
-pub use engine::context::Context;
 pub use engine::Engine;
 pub use error::YamlSchemaError;
 pub use schemas::one_of::OneOfSchema;
+pub use validation::Context;
 
 // Returns the library version, which reflects the crate version
 pub fn version() -> String {
