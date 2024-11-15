@@ -3,12 +3,12 @@ use log::{debug, error};
 use super::validation::objects::try_validate_value_against_properties;
 use super::validation::strings::validate_string;
 use crate::error::YamlSchemaError;
+use crate::validation::objects::try_validate_value_against_additional_properties;
 pub use crate::validation::Context;
 pub use crate::validation::ValidationError;
 use crate::{
-    fail_fast, format_vec, generic_error, not_yet_implemented, AdditionalProperties,
-    ArrayItemsValue, ConstSchema, EnumSchema, OneOfSchema, TypeValue, TypedSchema, YamlSchema,
-    YamlSchemaNumber,
+    fail_fast, format_vec, generic_error, not_yet_implemented, ArrayItemsValue, ConstSchema,
+    EnumSchema, OneOfSchema, TypeValue, TypedSchema, YamlSchema, YamlSchemaNumber,
 };
 
 pub struct Engine<'a> {
@@ -291,8 +291,6 @@ impl TypedSchema {
                 _ => k.as_str().unwrap_or_default().to_string(),
             };
             debug!("validate_object_mapping: key: \"{}\"", key);
-            let sub_context = context.append_path(&key);
-
             // First, we check the explicitly defined properties, and validate against it if found
             if let Some(properties) = &self.properties {
                 if try_validate_value_against_properties(context, &key, value, properties)? {
@@ -302,46 +300,13 @@ impl TypedSchema {
 
             // Then, we check if additional properties are allowed or not
             if let Some(additional_properties) = &self.additional_properties {
-                match additional_properties {
-                    // if additional_properties: true, then any additional properties are allowed
-                    AdditionalProperties::Boolean(true) => { /* no-op */ }
-                    // if additional_properties: false, then no additional properties are allowed
-                    AdditionalProperties::Boolean(false) => {
-                        context.add_error(format!("Additional property '{}' is not allowed!", key));
-                    }
-                    // if additional_properties: { type: <string> } or { type: [<string>] }
-                    // then we validate the additional property against the type schema
-                    AdditionalProperties::Type { r#type } => {
-                        // get the list of allowed types
-                        let allowed_types = r#type.as_list_of_allowed_types();
-                        debug!(
-                            "validate_object_mapping: allowed_types: {}",
-                            allowed_types.join(", ")
-                        );
-                        // TODO: Check if the value _is_ valid for any of the allow types
-                        // return Ok if so
-                        // return an error otherwise
-                        // check if the value is _NOT_ valid for any of the allowed types
-                        let allowed = allowed_types.iter().all(|allowed_type| {
-                            let sub_schema = TypedSchema {
-                                r#type: TypeValue::from_string(allowed_type.clone()),
-                                ..Default::default()
-                            };
-                            debug!(
-                                "Validating additional property '{}' with schema: {:?}",
-                                key, sub_schema
-                            );
-                            sub_schema.validate(&sub_context, value).is_ok()
-                        }); // if the value is not valid for any of the allowed types, then we return an error immediately
-                        if !allowed {
-                            context.add_error(format!(
-                                    "Additional property '{}' is not allowed. No allowed types matched!",
-                                    key
-                                )
-                            );
-                            fail_fast!(context);
-                        }
-                    }
+                if !try_validate_value_against_additional_properties(
+                    context,
+                    &key,
+                    value,
+                    additional_properties,
+                )? {
+                    return Ok(());
                 }
             }
             // Then we check if pattern_properties matches
@@ -595,6 +560,8 @@ impl Validator for OneOfSchema {
 mod tests {
 
     use std::collections::HashMap;
+
+    use crate::AdditionalProperties;
 
     use super::*;
 
