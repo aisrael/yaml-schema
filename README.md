@@ -98,7 +98,7 @@ Arguments:
 
 Options:
   -f, --schema <SCHEMAS>  The schema to validate against
-      --fail-fast         The schema to validate against
+      --fail-fast         Specify this flag to exit (1) as soon as any error is encountered
   -h, --help              Print help
   -V, --version           Print version
   ```

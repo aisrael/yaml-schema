@@ -16,7 +16,7 @@ pub struct Opts {
     /// The schema to validate against
     #[arg(short = 'f', long = "schema")]
     pub schemas: Vec<String>,
-    /// The schema to validate against
+    /// Specify this flag to exit (1) as soon as any error is encountered
     #[arg(long = "fail-fast", default_value = "false")]
     pub fail_fast: bool,
     /// The YAML file to validate
