@@ -16,6 +16,7 @@ impl Context {
         !self.errors.borrow().is_empty()
     }
 
+    /// Returns the current path as a string separated by "."
     pub fn path(&self) -> String {
         self.current_path.join(".")
     }
@@ -40,6 +41,7 @@ impl Context {
         });
     }
 
+    /// Append a path to the current path
     pub fn append_path<V: Into<String>>(&self, path: V) -> Context {
         let mut new_path = self.current_path.clone();
         new_path.push(path.into());

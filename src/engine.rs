@@ -1,6 +1,7 @@
 use log::{debug, error};
 
 use super::validation::objects::try_validate_value_against_properties;
+use super::validation::one_of::validate_one_of;
 use super::validation::strings::validate_string;
 use crate::error::YamlSchemaError;
 use crate::validation::objects::try_validate_value_against_additional_properties;
@@ -516,37 +517,7 @@ impl Validator for OneOfSchema {
         context: &Context,
         value: &serde_yaml::Value,
     ) -> Result<(), YamlSchemaError> {
-        let schemas: &Vec<YamlSchema> = &self.one_of;
-        let mut one_of_is_valid = false;
-        for schema in schemas {
-            debug!(
-                "OneOf: Validating value: {:?} against schema: {}",
-                value, schema
-            );
-            let sub_context = Context::new(context.fail_fast);
-            let sub_result = schema.validate(&sub_context, value);
-            match sub_result {
-                Ok(()) | Err(YamlSchemaError::FailFast) => {
-                    debug!(
-                        "OneOf: sub_context.errors: {}",
-                        sub_context.errors.borrow().len()
-                    );
-                    if sub_context.has_errors() {
-                        continue;
-                    }
-
-                    if one_of_is_valid {
-                        error!("OneOf: Value matched multiple schemas in `oneOf`!");
-                        context.add_error("Value matched multiple schemas in `oneOf`!");
-                        fail_fast!(context);
-                    } else {
-                        one_of_is_valid = true;
-                    }
-                }
-                Err(e) => return Err(e),
-            }
-        }
-        debug!("OneOf: one_of_is_valid: {}", one_of_is_valid);
+        let one_of_is_valid = validate_one_of(context, &self.one_of, value)?;
         if !one_of_is_valid {
             error!("OneOf: None of the schemas in `oneOf` matched!");
             context.add_error("None of the schemas in `oneOf` matched!");
