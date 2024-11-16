@@ -24,7 +24,8 @@ impl fmt::Display for OneOfSchema {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::engine::{Context, Validator};
+    use crate::engine::Context;
+    use crate::validation::Validator;
     use crate::{TypeValue, TypedSchema, YamlSchema, YamlSchemaNumber};
 
     #[test]

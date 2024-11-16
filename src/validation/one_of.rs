@@ -1,4 +1,4 @@
-use crate::engine::Validator;
+use super::Validator;
 use crate::{Context, YamlSchema, YamlSchemaError};
 use log::{debug, error};
 

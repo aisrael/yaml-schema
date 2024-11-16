@@ -2,7 +2,7 @@ use log::debug;
 /// A module to contain object type validation logic
 use std::collections::HashMap;
 
-use crate::engine::Validator;
+use super::Validator;
 use crate::validation::Context;
 use crate::{AdditionalProperties, TypeValue, TypedSchema, YamlSchema, YamlSchemaError};
 

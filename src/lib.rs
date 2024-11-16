@@ -12,7 +12,7 @@ pub mod validation;
 pub use engine::Engine;
 pub use error::YamlSchemaError;
 pub use schemas::one_of::OneOfSchema;
-pub use validation::Context;
+pub use validation::{Context, Validator};
 
 // Returns the library version, which reflects the crate version
 pub fn version() -> String {

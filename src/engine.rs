@@ -3,6 +3,7 @@ use log::{debug, error};
 use super::validation::objects::try_validate_value_against_properties;
 use super::validation::one_of::validate_one_of;
 use super::validation::strings::validate_string;
+use super::validation::Validator;
 use crate::error::YamlSchemaError;
 use crate::validation::objects::try_validate_value_against_additional_properties;
 pub use crate::validation::Context;
@@ -36,11 +37,6 @@ impl<'a> Engine<'a> {
             Err(e) => Err(e),
         }
     }
-}
-
-pub trait Validator {
-    fn validate(&self, context: &Context, value: &serde_yaml::Value)
-        -> Result<(), YamlSchemaError>;
 }
 
 impl Validator for YamlSchema {

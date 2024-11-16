@@ -8,6 +8,14 @@ pub mod strings;
 
 pub use context::Context;
 
+use crate::YamlSchemaError;
+
+/// A trait for validating a value against a schema
+pub trait Validator {
+    fn validate(&self, context: &Context, value: &serde_yaml::Value)
+        -> Result<(), YamlSchemaError>;
+}
+
 /// A validation error simply contains a path and an error message
 #[derive(Debug)]
 pub struct ValidationError {
