@@ -26,7 +26,7 @@ impl<'a> Engine<'a> {
         fail_fast: bool,
     ) -> Result<Context, YamlSchemaError> {
         debug!("Engine is running");
-        let context = Context::new(self.schema, fail_fast);
+        let context = Context::new(fail_fast);
         let result = self.schema.validate(&context, yaml);
         debug!("Engine: result: {:?}", result);
         debug!("Engine: context.errors: {}", context.errors.borrow().len());
@@ -523,7 +523,7 @@ impl Validator for OneOfSchema {
                 "OneOf: Validating value: {:?} against schema: {}",
                 value, schema
             );
-            let sub_context = Context::new(schema, context.fail_fast);
+            let sub_context = Context::new(context.fail_fast);
             let sub_result = schema.validate(&sub_context, value);
             match sub_result {
                 Ok(()) | Err(YamlSchemaError::FailFast) => {
@@ -568,16 +568,15 @@ mod tests {
     #[test]
     fn test_const() {
         let const_schema = ConstSchema::new("United States of America");
-        let yaml_schema = YamlSchema::Const(const_schema);
-        let context = Context::new(&yaml_schema, true);
-        assert!(yaml_schema
+        let context = Context::new(true);
+        assert!(const_schema
             .validate(
                 &context,
                 &serde_yaml::Value::String("United States of America".to_string())
             )
             .is_ok());
         assert!(!context.has_errors());
-        let _ = yaml_schema.validate(&context, &serde_yaml::Value::String("Canada".to_string()));
+        let _ = const_schema.validate(&context, &serde_yaml::Value::String("Canada".to_string()));
         assert!(context.has_errors());
         let error = context.errors.borrow_mut().pop().unwrap();
         assert_eq!(error.error, "Const validation failed, expected: String(\"United States of America\"), got: String(\"Canada\")");
@@ -590,14 +589,13 @@ mod tests {
             .into_iter()
             .collect(),
         );
-        let yaml_schema = YamlSchema::TypedSchema(Box::new(schema));
         let yaml = serde_yaml::from_str(
             r#"
             country: United States of America
         "#,
         )
         .unwrap();
-        let result = yaml_schema.validate(&context, &yaml);
+        let result = schema.validate(&context, &yaml);
         assert!(result.is_ok());
         assert!(!context.has_errors());
 
@@ -639,7 +637,6 @@ mod tests {
             .into_iter()
             .collect(),
         );
-        let yaml_schema = YamlSchema::TypedSchema(Box::new(schema));
         let yaml = serde_yaml::from_str(
             r#"
             foo: 42
@@ -647,8 +644,8 @@ mod tests {
             "#,
         )
         .unwrap();
-        let context = Context::new(&yaml_schema, false);
-        let result = yaml_schema.validate(&context, &yaml);
+        let context = Context::new(false);
+        let result = schema.validate(&context, &yaml);
         assert!(result.is_ok());
         assert!(context.has_errors());
         let errors = context.errors.borrow();
@@ -792,9 +789,8 @@ mod tests {
         "#,
         )
         .unwrap();
-        let yaml_schema = YamlSchema::OneOf(one_of_schema);
-        let context = Context::new(&yaml_schema, true);
-        let result = yaml_schema.validate(&context, &yaml);
+        let context = Context::new(true);
+        let result = one_of_schema.validate(&context, &yaml);
         assert!(result.is_ok());
         for error in context.errors.borrow().iter() {
             println!("Error: {:?}", error.error);
@@ -813,20 +809,19 @@ mod tests {
             required: Some(vec!["name".to_string()]),
             ..Default::default()
         };
-        let yaml_schema = YamlSchema::typed_schema(object_schema);
-        let context = Context::new(&yaml_schema, true);
+        let context = Context::new(true);
         let yaml = serde_yaml::from_str(
             r#"
             name: "John Doe"
         "#,
         )
         .unwrap();
-        let result = yaml_schema.validate(&context, &yaml);
+        let result = object_schema.validate(&context, &yaml);
         assert!(result.is_ok());
         assert!(!context.has_errors(), "Expected no errors, but got some");
 
         let yaml = serde_yaml::from_str(r#"null"#).unwrap();
-        let result = yaml_schema.validate(&context, &yaml);
+        let result = object_schema.validate(&context, &yaml);
         assert!(result.is_ok());
         assert!(context.has_errors(), "Expected errors, but got none");
     }
@@ -848,20 +843,20 @@ mod tests {
         ];
         let one_of_schema = YamlSchema::one_of(schemas);
         let properties = HashMap::from([("child".to_string(), one_of_schema)]);
-        let yaml_schema = YamlSchema::typed_schema(TypedSchema {
+        let typed_schema = TypedSchema {
             r#type: TypeValue::object(),
             properties: Some(properties),
             additional_properties: Some(AdditionalProperties::Boolean(false)),
             ..Default::default()
-        });
-        let context = Context::new(&yaml_schema, true);
+        };
+        let context = Context::new(true);
         let yaml = serde_yaml::from_str(
             r#"
             child: null
         "#,
         )
         .unwrap();
-        let result = yaml_schema.validate(&context, &yaml);
+        let result = typed_schema.validate(&context, &yaml);
         assert!(result.is_ok());
     }
 
@@ -900,9 +895,8 @@ mod tests {
         )
         .unwrap();
 
-        let yaml_schema = YamlSchema::typed_schema(pattern_properties_schema);
-        let context = Context::new(&yaml_schema, true);
-        let result = yaml_schema.validate(&context, &yaml);
+        let context = Context::new(true);
+        let result = pattern_properties_schema.validate(&context, &yaml);
         assert!(result.is_ok());
     }
 }

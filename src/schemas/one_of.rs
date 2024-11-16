@@ -45,7 +45,7 @@ mod tests {
         let schema = OneOfSchema { one_of: schemas };
         println!("{}", schema);
         let root_schema = YamlSchema::OneOf(schema);
-        let context = Context::new(&root_schema, false);
+        let context = Context::new(false);
         assert!(root_schema
             .validate(
                 &context,

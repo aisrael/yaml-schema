@@ -29,6 +29,7 @@ pub enum Commands {
     Version,
 }
 
+/// The main entrypoint function of the ys executable
 fn main() {
     env_logger::init();
     let opts = Opts::parse();
