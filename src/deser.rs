@@ -276,6 +276,7 @@ impl fmt::Display for ArrayItemsValue {
 /// The schemas are tried in order, and the first match is used. If no match is found, an error is added
 /// to the context.
 #[derive(Debug, Default, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
 pub struct OneOfSchema {
     pub one_of: Vec<YamlSchema>,
 }
@@ -439,16 +440,25 @@ mod tests {
     }
 
     #[test]
+    fn test_number_schema() {
+        let yaml = "
+        type: number
+        multipleOf: 5
+        ";
+        let schema: YamlSchema = serde_yaml::from_str(yaml).unwrap();
+        println!("{}", schema);
+    }
+
+    #[test]
     fn test_one_of_schema() {
-        let schema: YamlSchema = serde_yaml::from_str(
-            "oneOf:
+        let yaml = "
+        oneOf:
         - type: number
           multipleOf: 5
         - type: number
           multipleOf: 3
-        ",
-        )
-        .unwrap();
+        ";
+        let schema: YamlSchema = serde_yaml::from_str(yaml).unwrap();
         println!("{}", schema);
     }
 }
