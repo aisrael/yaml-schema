@@ -11,8 +11,7 @@ use crate::validation::objects::try_validate_value_against_additional_properties
 pub use crate::validation::Context;
 pub use crate::validation::ValidationError;
 use crate::{
-    fail_fast, format_vec, generic_error, not_yet_implemented, ConstSchema, EnumSchema,
-    OneOfSchema, YamlSchema,
+    fail_fast, format_vec, generic_error, ConstSchema, EnumSchema, OneOfSchema, YamlSchema,
 };
 
 pub struct Engine<'a> {
@@ -60,7 +59,7 @@ impl Validator for YamlSchema {
             YamlSchema::Const(const_schema) => const_schema.validate(context, value),
             YamlSchema::Enum(enum_schema) => enum_schema.validate(context, value),
             YamlSchema::OneOf(one_of_schema) => one_of_schema.validate(context, value),
-            _ => not_yet_implemented!(),
+            _ => unimplemented!(),
         }
     }
 }

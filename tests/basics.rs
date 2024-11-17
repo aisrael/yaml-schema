@@ -18,7 +18,7 @@ async fn a_yaml_schema(world: &mut BasicsWorld, step: &Step) {
     let schema = step.docstring().unwrap();
     debug!("schema: {:?}", schema);
     let deser_schema: deser::YamlSchema = serde_yaml::from_str(schema).unwrap();
-    let yaml_schema: YamlSchema = deser_schema.into();
+    let yaml_schema: YamlSchema = YamlSchema::from(&deser_schema);
     world.yaml_schema = yaml_schema;
 }
 

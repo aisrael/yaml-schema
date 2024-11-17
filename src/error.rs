@@ -31,10 +31,3 @@ macro_rules! generic_error {
         YamlSchemaError::GenericError($s.to_string())
     };
 }
-
-#[macro_export]
-macro_rules! not_yet_implemented {
-    () => {
-        Err(YamlSchemaError::NotYetImplemented)
-    };
-}

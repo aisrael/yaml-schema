@@ -1,42 +1,33 @@
 /// The schemas defined in the YAML schema language
-use serde::{Deserialize, Serialize};
 use std::fmt;
 
 mod any_of;
-pub mod array;
-pub mod number;
-pub mod object;
-pub mod one_of;
-pub mod string;
+mod array;
+mod bool_or_typed;
+mod boolean;
+mod r#const;
+mod r#enum;
+mod number;
+mod object;
+mod one_of;
+mod string;
 
 pub use array::ArraySchema;
+pub use bool_or_typed::BoolOrTypedSchema;
+pub use boolean::BooleanSchema;
 pub use number::NumberSchema;
 pub use object::ObjectSchema;
 pub use one_of::OneOfSchema;
+pub use r#const::ConstSchema;
+pub use r#enum::EnumSchema;
 pub use string::StringSchema;
-
-/// A const schema represents a constant value
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
-pub struct ConstSchema {
-    pub r#const: serde_yaml::Value,
-}
-
-/// An enum schema represents a set of constant values
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
-pub struct EnumSchema {
-    pub r#enum: Vec<serde_yaml::Value>,
-}
-
-#[derive(Debug, PartialEq)]
-pub enum BoolOrTypedSchema {
-    TypedSchema(Box<TypedSchema>),
-    Boolean(bool),
-}
 
 #[derive(Debug, PartialEq)]
 pub enum TypedSchema {
-    Object(ObjectSchema),
+    Array(ArraySchema),
+    Boolean,
     Number(NumberSchema),
+    Object(ObjectSchema),
     String(StringSchema),
 }
 
@@ -47,38 +38,13 @@ pub enum TypeValue {
     Array(Vec<String>),
 }
 
-impl fmt::Display for ConstSchema {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Const {:?}", self.r#const)
-    }
-}
-
-impl From<crate::deser::ConstSchema> for ConstSchema {
-    fn from(c: crate::deser::ConstSchema) -> Self {
-        Self { r#const: c.r#const }
-    }
-}
-
-impl fmt::Display for EnumSchema {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Enum {:?}", self.r#enum)
-    }
-}
-
-impl fmt::Display for BoolOrTypedSchema {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            BoolOrTypedSchema::TypedSchema(s) => write!(f, "{}", s),
-            BoolOrTypedSchema::Boolean(b) => write!(f, "{}", b),
-        }
-    }
-}
-
 impl fmt::Display for TypedSchema {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            TypedSchema::Object(o) => write!(f, "{}", o),
+            TypedSchema::Array(a) => write!(f, "{}", a),
+            TypedSchema::Boolean => write!(f, "type: boolean"),
             TypedSchema::Number(n) => write!(f, "{}", n),
+            TypedSchema::Object(o) => write!(f, "{}", o),
             TypedSchema::String(s) => write!(f, "{}", s),
         }
     }

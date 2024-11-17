@@ -10,6 +10,7 @@ pub use error::YamlSchemaError;
 pub use schemas::{
     ArraySchema, ConstSchema, EnumSchema, NumberSchema, ObjectSchema, OneOfSchema, StringSchema,
 };
+use schemas::{BooleanSchema, TypedSchema};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fmt};
 pub use validation::{Context, Validator};
@@ -20,7 +21,7 @@ pub fn version() -> String {
 }
 
 /// A Number is either an integer or a float
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 #[serde(untagged)]
 pub enum Number {
     Integer(i64),
@@ -54,6 +55,7 @@ pub enum YamlSchema {
     #[default]
     Empty,
     Boolean(bool),
+    BooleanSchema(BooleanSchema),
     Const(ConstSchema),
     Enum(EnumSchema),
     OneOf(OneOfSchema),
@@ -68,6 +70,7 @@ impl fmt::Display for YamlSchema {
         match self {
             YamlSchema::Empty => write!(f, "<empty schema>"),
             YamlSchema::Boolean(b) => write!(f, "{}", b),
+            YamlSchema::BooleanSchema(b) => write!(f, "{}", b),
             YamlSchema::Const(c) => write!(f, "{}", c),
             YamlSchema::Enum(e) => write!(f, "{}", e),
             YamlSchema::OneOf(one_of_schema) => {
@@ -81,31 +84,54 @@ impl fmt::Display for YamlSchema {
     }
 }
 
-impl From<crate::deser::YamlSchema> for YamlSchema {
-    fn from(deserialized: crate::deser::YamlSchema) -> Self {
+impl From<&crate::deser::YamlSchema> for YamlSchema {
+    fn from(deserialized: &crate::deser::YamlSchema) -> Self {
         match deserialized {
             deser::YamlSchema::Empty => YamlSchema::Empty,
-            deser::YamlSchema::Boolean(b) => YamlSchema::Boolean(b),
+            deser::YamlSchema::Boolean(b) => YamlSchema::Boolean(*b),
             deser::YamlSchema::Const(c) => YamlSchema::Const(c.into()),
             deser::YamlSchema::Enum(e) => YamlSchema::Enum(e.into()),
             deser::YamlSchema::OneOf(o) => YamlSchema::OneOf(o.into()),
-            deser::YamlSchema::TypedSchema(t) => deser_typed_schema(&t),
+            deser::YamlSchema::TypedSchema(t) => match deser_typed_schema(&t) {
+                TypedSchema::Array(a) => YamlSchema::Array(a),
+                TypedSchema::Boolean => YamlSchema::BooleanSchema(BooleanSchema),
+                TypedSchema::Number(n) => YamlSchema::Number(n),
+                TypedSchema::Object(o) => YamlSchema::Object(o),
+                TypedSchema::String(s) => YamlSchema::String(s),
+            },
         }
     }
 }
 
-fn deser_typed_schema(t: &crate::deser::TypedSchema) -> YamlSchema {
+impl From<&crate::deser::TypedSchema> for TypedSchema {
+    fn from(value: &crate::deser::TypedSchema) -> Self {
+        match &value.r#type {
+            crate::deser::TypeValue::Single(s) => deser_typed_schema(value),
+            crate::deser::TypeValue::Array(a) => unimplemented!(),
+        }
+    }
+}
+
+fn deser_typed_schema(t: &crate::deser::TypedSchema) -> TypedSchema {
     match &t.r#type {
         deser::TypeValue::Single(s) => match s {
             serde_yaml::Value::String(s) => match s.as_str() {
-                "string" => YamlSchema::String(StringSchema {
+                "string" => TypedSchema::String(StringSchema {
                     min_length: t.min_length,
                     max_length: t.max_length,
                     pattern: t.pattern.clone(),
                 }),
-                _ => unimplemented!(),
+                "number" => TypedSchema::Number(NumberSchema {
+                    multiple_of: t.multiple_of,
+                    exclusive_maximum: t.exclusive_maximum,
+                    exclusive_minimum: t.exclusive_minimum,
+                    maximum: t.maximum,
+                    minimum: t.minimum,
+                }),
+                "array" => TypedSchema::Array(ArraySchema::from(t)),
+                unknown => unimplemented!("Don't know how to deserialize type: {}", unknown),
             },
-            _ => unimplemented!(),
+            not_yet => unimplemented!("Don't know how to deserialize type: {:?}", not_yet),
         },
         _ => unimplemented!(),
     }

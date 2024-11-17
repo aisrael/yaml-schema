@@ -19,10 +19,9 @@ impl fmt::Display for OneOfSchema {
     }
 }
 
-impl From<crate::deser::OneOfSchema> for OneOfSchema {
-    fn from(deserialized: crate::deser::OneOfSchema) -> Self {
-        OneOfSchema {
-            one_of: deserialized.one_of.into_iter().map(|s| s.into()).collect(),
-        }
+impl From<&crate::deser::OneOfSchema> for OneOfSchema {
+    fn from(source: &crate::deser::OneOfSchema) -> Self {
+        let one_of: Vec<YamlSchema> = source.one_of.iter().map(|s| s.into()).collect();
+        OneOfSchema { one_of }
     }
 }

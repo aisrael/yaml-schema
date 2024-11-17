@@ -45,7 +45,7 @@ pub fn try_validate_value_against_additional_properties(
             // returning `false` signals fail fast
             return Ok(false);
         }
-        _ => return not_yet_implemented!(),
+        _ => return unimplemented!(),
     }
     Ok(true)
 }

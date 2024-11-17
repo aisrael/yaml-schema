@@ -58,7 +58,7 @@ fn command_validate(opts: Opts) -> Result<i32, anyhow::Error> {
     // TODO: Support multiple schema files
     let schema_file = std::fs::File::open(opts.schemas.first().unwrap())?;
     let deserialized_representation: deser::YamlSchema = serde_yaml::from_reader(schema_file)?;
-    let schema: YamlSchema = YamlSchema::from(deserialized_representation);
+    let schema: YamlSchema = YamlSchema::from(&deserialized_representation);
 
     let engine = Engine::new(&schema);
     let yaml_file = std::fs::File::open(opts.file.unwrap())?;
