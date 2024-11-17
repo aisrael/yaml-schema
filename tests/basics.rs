@@ -1,8 +1,8 @@
+use cucumber::{gherkin::Step, given, then, World};
 use log::{debug, error};
 use std::cell::RefCell;
 use std::rc::Rc;
-
-use cucumber::{gherkin::Step, given, then, World};
+use yaml_schema::deser;
 use yaml_schema::engine::ValidationError;
 use yaml_schema::{Engine, YamlSchema};
 
@@ -17,7 +17,8 @@ pub struct BasicsWorld {
 async fn a_yaml_schema(world: &mut BasicsWorld, step: &Step) {
     let schema = step.docstring().unwrap();
     debug!("schema: {:?}", schema);
-    let yaml_schema: YamlSchema = serde_yaml::from_str(schema).unwrap();
+    let deser_schema: deser::YamlSchema = serde_yaml::from_str(schema).unwrap();
+    let yaml_schema: YamlSchema = deser_schema.into();
     world.yaml_schema = yaml_schema;
 }
 
