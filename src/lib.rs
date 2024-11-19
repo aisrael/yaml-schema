@@ -95,6 +95,7 @@ impl From<&crate::deser::YamlSchema> for YamlSchema {
             deser::YamlSchema::TypedSchema(t) => match deser_typed_schema(&t) {
                 TypedSchema::Array(a) => YamlSchema::Array(a),
                 TypedSchema::Boolean => YamlSchema::BooleanSchema(BooleanSchema),
+                TypedSchema::Empty => YamlSchema::Empty,
                 TypedSchema::Number(n) => YamlSchema::Number(n),
                 TypedSchema::Object(o) => YamlSchema::Object(o),
                 TypedSchema::String(s) => YamlSchema::String(s),
@@ -131,9 +132,12 @@ fn deser_typed_schema(t: &crate::deser::TypedSchema) -> TypedSchema {
                 "array" => TypedSchema::Array(ArraySchema::from(t)),
                 unknown => unimplemented!("Don't know how to deserialize type: {}", unknown),
             },
-            not_yet => unimplemented!("Don't know how to deserialize type: {:?}", not_yet),
+            serde_yaml::Value::Null => TypedSchema::Empty,
+            unsupported => panic!("Unsupported type: {:?}", unsupported),
         },
-        _ => unimplemented!(),
+        deser::TypeValue::Array(a) => {
+            unimplemented!("Can't handle multiple types yes: {}", format_vec(a))
+        }
     }
 }
 

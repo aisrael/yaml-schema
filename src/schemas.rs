@@ -26,6 +26,7 @@ pub use string::StringSchema;
 pub enum TypedSchema {
     Array(ArraySchema),
     Boolean,
+    Empty,
     Number(NumberSchema),
     Object(ObjectSchema),
     String(StringSchema),
@@ -43,6 +44,7 @@ impl fmt::Display for TypedSchema {
         match self {
             TypedSchema::Array(a) => write!(f, "{}", a),
             TypedSchema::Boolean => write!(f, "type: boolean"),
+            TypedSchema::Empty => write!(f, "type: null"),
             TypedSchema::Number(n) => write!(f, "{}", n),
             TypedSchema::Object(o) => write!(f, "{}", o),
             TypedSchema::String(s) => write!(f, "{}", s),
