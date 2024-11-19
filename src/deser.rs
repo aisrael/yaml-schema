@@ -2,7 +2,15 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
 
+use crate::unsupported_type;
+use crate::error::YamlSchemaError;
+
 use super::{format_map, format_vec, Number};
+
+/// Instead of From<deser::YamlSchema>
+pub trait Deser<T>: Sized {
+    fn deserialize(&self) -> Result<T, YamlSchemaError>;
+}
 
 /// A YamlSchema is either empty, a boolean, a typed schema, or an enum schema
 #[derive(Debug, Default, Serialize, Deserialize, PartialEq)]
@@ -119,6 +127,19 @@ impl YamlSchema {
     }
 }
 
+impl Deser<crate::YamlSchema> for YamlSchema {
+    fn deserialize(&self) -> Result<crate::YamlSchema, YamlSchemaError> {
+        match &self {
+            YamlSchema::Empty => Ok(crate::YamlSchema::Empty),
+            YamlSchema::Boolean(b) => Ok(crate::YamlSchema::Boolean(*b)),
+            YamlSchema::Const(c) => Ok(crate::YamlSchema::Const(c.into())),
+            YamlSchema::Enum(e) => Ok(crate::YamlSchema::Enum(e.into())),
+            YamlSchema::OneOf(o) => Ok(crate::YamlSchema::OneOf(o.into())),
+            YamlSchema::TypedSchema(t) => (*t).deserialize(),
+        }
+    }
+}
+
 impl TypedSchema {
     pub fn null() -> TypedSchema {
         TypedSchema {
@@ -203,6 +224,38 @@ impl fmt::Display for TypedSchema {
         }
 
         write!(f, "TypedSchema {{ {} }}", fields.join(", "))
+    }
+}
+
+impl Deser<crate::YamlSchema> for TypedSchema {
+    fn deserialize(&self) -> Result<crate::YamlSchema, YamlSchemaError> {
+        match &self.r#type {
+            TypeValue::Single(s) => match s {
+                serde_yaml::Value::String(s) => match s.as_str() {
+                    "string" => Ok(crate::YamlSchema::String(crate::schemas::StringSchema {
+                        min_length: self.min_length,
+                        max_length: self.max_length,
+                        pattern: self.pattern.clone(),
+                    })),
+                    "number" => Ok(crate::YamlSchema::Number(crate::schemas::NumberSchema {
+                        multiple_of: self.multiple_of,
+                        exclusive_maximum: self.exclusive_maximum,
+                        exclusive_minimum: self.exclusive_minimum,
+                        maximum: self.maximum,
+                        minimum: self.minimum,
+                    })),
+                    "array" => Ok(crate::YamlSchema::Array(crate::schemas::ArraySchema::from(
+                        self,
+                    ))),
+                    unknown => unsupported_type!("Unrecognized type '{}'!", unknown),
+                },
+                serde_yaml::Value::Null => Ok(crate::YamlSchema::Empty),
+                unsupported => panic!("Unsupported type: {:?}", unsupported),
+            },
+            TypeValue::Array(a) => {
+                unimplemented!("Can't handle multiple types yes: {}", format_vec(a))
+            }
+        }
     }
 }
 

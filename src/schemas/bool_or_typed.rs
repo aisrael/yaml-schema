@@ -1,7 +1,8 @@
 use std::fmt;
 
-use crate::deser;
+use crate::deser::Deser;
 use crate::TypedSchema;
+use crate::{deser, YamlSchemaError};
 
 #[derive(Debug, PartialEq)]
 pub enum BoolOrTypedSchema {
