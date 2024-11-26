@@ -49,7 +49,6 @@ impl fmt::Display for Number {
     }
 }
 
-
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct PropertyNamesValue {
     pub pattern: String,
@@ -61,6 +60,7 @@ pub enum YamlSchema {
     #[default]
     Empty,
     Boolean(bool),
+    TypeNull,
     BooleanSchema(BooleanSchema),
     Const(ConstSchema),
     Enum(EnumSchema),
@@ -75,6 +75,7 @@ impl fmt::Display for YamlSchema {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             YamlSchema::Empty => write!(f, "<empty schema>"),
+            YamlSchema::TypeNull => write!(f, "type: null"),
             YamlSchema::Boolean(b) => write!(f, "{}", b),
             YamlSchema::BooleanSchema(b) => write!(f, "{}", b),
             YamlSchema::Const(c) => write!(f, "{}", c),
@@ -86,26 +87,6 @@ impl fmt::Display for YamlSchema {
             YamlSchema::Number(n) => write!(f, "{}", n),
             YamlSchema::Object(o) => write!(f, "{}", o),
             YamlSchema::Array(a) => write!(f, "{}", a),
-        }
-    }
-}
-
-impl From<&crate::deser::YamlSchema> for YamlSchema {
-    fn from(deserialized: &crate::deser::YamlSchema) -> Self {
-        match deserialized {
-            deser::YamlSchema::Empty => YamlSchema::Empty,
-            deser::YamlSchema::Boolean(b) => YamlSchema::Boolean(*b),
-            deser::YamlSchema::Const(c) => YamlSchema::Const(c.into()),
-            deser::YamlSchema::Enum(e) => YamlSchema::Enum(e.into()),
-            deser::YamlSchema::OneOf(o) => YamlSchema::OneOf(o.into()),
-            deser::YamlSchema::TypedSchema(t) => match deser_typed_schema(&t) {
-                TypedSchema::Array(a) => YamlSchema::Array(a),
-                TypedSchema::Boolean => YamlSchema::BooleanSchema(BooleanSchema),
-                TypedSchema::Empty => YamlSchema::Empty,
-                TypedSchema::Number(n) => YamlSchema::Number(n),
-                TypedSchema::Object(o) => YamlSchema::Object(o),
-                TypedSchema::String(s) => YamlSchema::String(s),
-            },
         }
     }
 }
@@ -138,7 +119,7 @@ fn deser_typed_schema(t: &crate::deser::TypedSchema) -> TypedSchema {
                 "array" => TypedSchema::Array(ArraySchema::from(t)),
                 unknown => unimplemented!("Don't know how to deserialize type: {}", unknown),
             },
-            serde_yaml::Value::Null => TypedSchema::Empty,
+            serde_yaml::Value::Null => TypedSchema::Null,
             unsupported => panic!("Unsupported type: {:?}", unsupported),
         },
         deser::TypeValue::Array(a) => {

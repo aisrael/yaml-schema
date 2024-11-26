@@ -122,7 +122,7 @@ Feature: Basic YAML schema
       data: structure
       ```
 
-  Scenario: "type: object" should validate properties ZZZ
+  Scenario: "type: object" should validate properties
     Given a YAML schema:
       ```
       type: object

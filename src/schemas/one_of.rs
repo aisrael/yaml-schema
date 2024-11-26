@@ -3,7 +3,7 @@
 /// to the context.
 use std::fmt;
 
-use crate::{format_vec, YamlSchema};
+use crate::{deser::Deser, format_vec, YamlSchema};
 
 /// The `oneOf` schema is a schema that matches if any of the schemas in the `oneOf` array match.
 /// The schemas are tried in order, and the first match is used. If no match is found, an error is added
@@ -21,7 +21,11 @@ impl fmt::Display for OneOfSchema {
 
 impl From<&crate::deser::OneOfSchema> for OneOfSchema {
     fn from(source: &crate::deser::OneOfSchema) -> Self {
-        let one_of: Vec<YamlSchema> = source.one_of.iter().map(|s| s.into()).collect();
+        let one_of: Vec<YamlSchema> = source
+            .one_of
+            .iter()
+            .map(|s| s.deserialize().unwrap())
+            .collect();
         OneOfSchema { one_of }
     }
 }
