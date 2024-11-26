@@ -8,7 +8,8 @@ pub mod validation;
 pub use engine::Engine;
 pub use error::YamlSchemaError;
 pub use schemas::{
-    ArraySchema, ConstSchema, EnumSchema, NumberSchema, ObjectSchema, OneOfSchema, StringSchema,
+    ArraySchema, ConstSchema, EnumSchema, IntegerSchema, NumberSchema, ObjectSchema, OneOfSchema,
+    StringSchema,
 };
 use schemas::{BooleanSchema, TypedSchema};
 use serde::{Deserialize, Serialize};
@@ -66,6 +67,7 @@ pub enum YamlSchema {
     Enum(EnumSchema),
     OneOf(OneOfSchema),
     String(StringSchema),
+    Integer(IntegerSchema),
     Number(NumberSchema),
     Object(ObjectSchema),
     Array(ArraySchema),
@@ -80,6 +82,7 @@ impl fmt::Display for YamlSchema {
             YamlSchema::BooleanSchema(b) => write!(f, "{}", b),
             YamlSchema::Const(c) => write!(f, "{}", c),
             YamlSchema::Enum(e) => write!(f, "{}", e),
+            YamlSchema::Integer(i) => write!(f, "{}", i),
             YamlSchema::OneOf(one_of_schema) => {
                 write!(f, "{}", one_of_schema)
             }

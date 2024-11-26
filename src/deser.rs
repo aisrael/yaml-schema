@@ -234,6 +234,13 @@ impl Deser<crate::YamlSchema> for TypedSchema {
                         max_length: self.max_length,
                         pattern: self.pattern.clone(),
                     })),
+                    "integer" => Ok(crate::YamlSchema::Integer(crate::schemas::IntegerSchema {
+                        multiple_of: self.multiple_of,
+                        exclusive_maximum: self.exclusive_maximum,
+                        exclusive_minimum: self.exclusive_minimum,
+                        maximum: self.maximum,
+                        minimum: self.minimum,
+                    })),
                     "number" => Ok(crate::YamlSchema::Number(crate::schemas::NumberSchema {
                         multiple_of: self.multiple_of,
                         exclusive_maximum: self.exclusive_maximum,

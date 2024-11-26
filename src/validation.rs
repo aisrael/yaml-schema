@@ -110,7 +110,7 @@ impl Validator for YamlSchema {
                     context.add_error(format!("Expected null, but got: {:?}", value));
                 }
                 Ok(())
-            },
+            }
             YamlSchema::Boolean(boolean) => {
                 if !*boolean {
                     context.add_error("Schema is `false`!".to_string());
@@ -120,6 +120,7 @@ impl Validator for YamlSchema {
             YamlSchema::BooleanSchema(boolean_schema) => boolean_schema.validate(context, value),
             YamlSchema::Const(const_schema) => const_schema.validate(context, value),
             YamlSchema::Enum(enum_schema) => enum_schema.validate(context, value),
+            YamlSchema::Integer(integer_schema) => integer_schema.validate(context, value),
             YamlSchema::Object(object_schema) => object_schema.validate(context, value),
             YamlSchema::OneOf(one_of_schema) => one_of_schema.validate(context, value),
             YamlSchema::String(string_schema) => string_schema.validate(context, value),
