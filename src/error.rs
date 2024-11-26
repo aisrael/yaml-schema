@@ -7,6 +7,8 @@ pub enum YamlSchemaError {
     NotYetImplemented,
     #[error("YAML parsing error: {0}")]
     YamlParsingError(#[from] yaml_rust2::ScanError),
+    #[error("Unsupported type: {0}")]
+    UnsupportedType(String),
     #[error("Generic YAML schema error: {0}")]
     GenericError(String),
     #[error("Fail fast signal")]
@@ -23,18 +25,21 @@ macro_rules! fail_fast {
 }
 
 #[macro_export]
-macro_rules! generic_error {
+macro_rules! unsupported_type {
     ($s:literal, $($e:expr),+) => {
-        YamlSchemaError::GenericError(format!($s, $($e),+))
+        Err(YamlSchemaError::UnsupportedType(format!($s, $($e),+)))
     };
-    ($s:literal) => {
-        YamlSchemaError::GenericError($s.to_string())
+    ($e:expr) => {
+        Err(YamlSchemaError::UnsupportedType($e))
     };
 }
 
 #[macro_export]
-macro_rules! not_yet_implemented {
-    () => {
-        Err(YamlSchemaError::NotYetImplemented)
+macro_rules! generic_error {
+    ($s:literal, $($e:expr),+) => {
+        Err(YamlSchemaError::GenericError(format!($s, $($e),+)))
+    };
+    ($s:literal) => {
+        YamlSchemaError::GenericError($s.to_string())
     };
 }

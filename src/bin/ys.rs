@@ -1,7 +1,7 @@
 use clap::{Parser, Subcommand};
-use yaml_schema::{Engine, YamlSchema};
-
-use yaml_schema::version;
+use yaml_schema::deser::Deser;
+use yaml_schema::{deser, YamlSchema};
+use yaml_schema::{version, Engine};
 
 #[derive(Parser, Debug, Default)]
 #[command(name = "ys")]
@@ -57,7 +57,9 @@ fn command_validate(opts: Opts) -> Result<i32, anyhow::Error> {
     // Currently, we only support a single schema file
     // TODO: Support multiple schema files
     let schema_file = std::fs::File::open(opts.schemas.first().unwrap())?;
-    let schema: YamlSchema = serde_yaml::from_reader(schema_file)?;
+    let deserialized_representation: deser::YamlSchema = serde_yaml::from_reader(schema_file)?;
+    let schema: YamlSchema = deserialized_representation.deserialize()?;
+
     let engine = Engine::new(&schema);
     let yaml_file = std::fs::File::open(opts.file.unwrap())?;
     let yaml: serde_yaml::Value = serde_yaml::from_reader(yaml_file)?;

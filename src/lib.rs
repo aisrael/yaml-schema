@@ -1,8 +1,4 @@
-use std::collections::HashMap;
-use std::fmt;
-
-use serde::{Deserialize, Serialize};
-
+pub mod deser;
 pub mod engine;
 #[macro_use]
 pub mod error;
@@ -11,7 +7,13 @@ pub mod validation;
 
 pub use engine::Engine;
 pub use error::YamlSchemaError;
-pub use schemas::one_of::OneOfSchema;
+pub use schemas::{
+    ArraySchema, ConstSchema, EnumSchema, IntegerSchema, NumberSchema, ObjectSchema, OneOfSchema,
+    StringSchema,
+};
+use schemas::{BooleanSchema, TypedSchema};
+use serde::{Deserialize, Serialize};
+use std::{collections::HashMap, fmt};
 pub use validation::{Context, Validator};
 
 // Returns the library version, which reflects the crate version
@@ -19,224 +21,116 @@ pub fn version() -> String {
     clap::crate_version!().to_string()
 }
 
-/// A YamlSchema is either empty, a boolean, a typed schema, or an enum schema
-#[derive(Debug, Default, Serialize, Deserialize, PartialEq)]
+/// A Number is either an integer or a float
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 #[serde(untagged)]
-pub enum YamlSchema {
-    #[default]
-    Empty,
-    Boolean(bool),
-    Const(ConstSchema),
-    Enum(EnumSchema),
-    OneOf(OneOfSchema),
-    // Need to put TypedSchema last, because not specifying `type:`
-    // is interpreted as `type: null` (None)
-    TypedSchema(Box<TypedSchema>),
-}
-
-/// A typed schema is a schema that has a type
-#[derive(Debug, Default, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct TypedSchema {
-    pub r#type: TypeValue,
-    // number
-    pub minimum: Option<YamlSchemaNumber>,
-    pub maximum: Option<YamlSchemaNumber>,
-    pub exclusive_minimum: Option<YamlSchemaNumber>,
-    pub exclusive_maximum: Option<YamlSchemaNumber>,
-    pub multiple_of: Option<YamlSchemaNumber>,
-    // object
-    pub properties: Option<HashMap<String, YamlSchema>>,
-    pub required: Option<Vec<String>>,
-    pub additional_properties: Option<AdditionalProperties>,
-    pub pattern_properties: Option<HashMap<String, YamlSchema>>,
-    pub property_names: Option<PropertyNamesValue>,
-    pub min_properties: Option<usize>,
-    pub max_properties: Option<usize>,
-    // string
-    pub min_length: Option<usize>,
-    pub max_length: Option<usize>,
-    pub pattern: Option<String>,
-    // array
-    pub items: Option<ArrayItemsValue>,
-    pub prefix_items: Option<Vec<YamlSchema>>,
-    pub contains: Option<YamlSchema>,
-}
-
-/// A type value is either a string or an array of strings
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
-#[serde(untagged)]
-pub enum TypeValue {
-    Single(serde_yaml::Value),
-    Array(Vec<String>),
-}
-
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
-#[serde(untagged)]
-pub enum YamlSchemaNumber {
+pub enum Number {
     Integer(i64),
     Float(f64),
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
-pub struct ConstSchema {
-    pub r#const: serde_yaml::Value,
+impl Number {
+    /// Create a new integer number
+    pub fn integer(value: i64) -> Number {
+        Number::Integer(value)
+    }
+
+    /// Create a new float number
+    pub fn float(value: f64) -> Number {
+        Number::Float(value)
+    }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
-pub struct EnumSchema {
-    pub r#enum: Vec<serde_yaml::Value>,
+impl fmt::Display for Number {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Number::Integer(v) => write!(f, "{}", v),
+            Number::Float(v) => write!(f, "{}", v),
+        }
+    }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
-#[serde(untagged)]
-pub enum AdditionalProperties {
-    Boolean(bool),
-    Type { r#type: TypeValue },
-}
-
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct PropertyNamesValue {
     pub pattern: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
-#[serde(untagged)]
-pub enum ArrayItemsValue {
-    TypedSchema(Box<TypedSchema>),
+/// A YamlSchema is either empty, a boolean, a typed schema, or an enum schema
+#[derive(Debug, Default, PartialEq)]
+pub enum YamlSchema {
+    #[default]
+    Empty,
     Boolean(bool),
-}
-
-impl YamlSchema {
-    pub fn new() -> YamlSchema {
-        YamlSchema::Empty
-    }
-
-    pub fn const_schema<V>(value: V) -> YamlSchema
-    where
-        V: Into<serde_yaml::Value>,
-    {
-        YamlSchema::Const(ConstSchema {
-            r#const: value.into(),
-        })
-    }
-
-    pub fn one_of(schemas: Vec<YamlSchema>) -> YamlSchema {
-        YamlSchema::OneOf(OneOfSchema { one_of: schemas })
-    }
-
-    pub fn typed_schema(schema: TypedSchema) -> YamlSchema {
-        YamlSchema::TypedSchema(Box::new(schema))
-    }
-
-    pub fn is_none(&self) -> bool {
-        self == &YamlSchema::Empty
-    }
+    TypeNull,
+    BooleanSchema(BooleanSchema),
+    Const(ConstSchema),
+    Enum(EnumSchema),
+    OneOf(OneOfSchema),
+    String(StringSchema),
+    Integer(IntegerSchema),
+    Number(NumberSchema),
+    Object(ObjectSchema),
+    Array(ArraySchema),
 }
 
 impl fmt::Display for YamlSchema {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             YamlSchema::Empty => write!(f, "<empty schema>"),
+            YamlSchema::TypeNull => write!(f, "type: null"),
             YamlSchema::Boolean(b) => write!(f, "{}", b),
+            YamlSchema::BooleanSchema(b) => write!(f, "{}", b),
             YamlSchema::Const(c) => write!(f, "{}", c),
             YamlSchema::Enum(e) => write!(f, "{}", e),
+            YamlSchema::Integer(i) => write!(f, "{}", i),
             YamlSchema::OneOf(one_of_schema) => {
                 write!(f, "{}", one_of_schema)
             }
-            YamlSchema::TypedSchema(s) => write!(f, "{}", s),
+            YamlSchema::String(s) => write!(f, "{}", s),
+            YamlSchema::Number(n) => write!(f, "{}", n),
+            YamlSchema::Object(o) => write!(f, "{}", o),
+            YamlSchema::Array(a) => write!(f, "{}", a),
         }
     }
 }
 
-impl TypedSchema {
-    pub fn null() -> TypedSchema {
-        TypedSchema {
-            r#type: TypeValue::null(),
-            ..Default::default()
-        }
-    }
-
-    pub fn string() -> TypedSchema {
-        TypedSchema {
-            r#type: TypeValue::string(),
-            ..Default::default()
-        }
-    }
-
-    pub fn number() -> TypedSchema {
-        TypedSchema {
-            r#type: TypeValue::number(),
-            ..Default::default()
-        }
-    }
-
-    pub fn object(properties: HashMap<String, YamlSchema>) -> TypedSchema {
-        TypedSchema {
-            r#type: TypeValue::object(),
-            properties: Some(properties),
-            ..Default::default()
+fn deser_typed_schema(t: &crate::deser::TypedSchema) -> TypedSchema {
+    match &t.r#type {
+        deser::TypeValue::Single(s) => match s {
+            serde_yaml::Value::String(s) => match s.as_str() {
+                "string" => TypedSchema::String(StringSchema {
+                    min_length: t.min_length,
+                    max_length: t.max_length,
+                    pattern: t.pattern.clone(),
+                }),
+                "number" => TypedSchema::Number(NumberSchema {
+                    multiple_of: t.multiple_of,
+                    exclusive_maximum: t.exclusive_maximum,
+                    exclusive_minimum: t.exclusive_minimum,
+                    maximum: t.maximum,
+                    minimum: t.minimum,
+                }),
+                "array" => TypedSchema::Array(ArraySchema::from(t)),
+                unknown => unimplemented!("Don't know how to deserialize type: {}", unknown),
+            },
+            serde_yaml::Value::Null => TypedSchema::Null,
+            unsupported => panic!("Unsupported type: {:?}", unsupported),
+        },
+        deser::TypeValue::Array(a) => {
+            unimplemented!("Can't handle multiple types yes: {}", format_vec(a))
         }
     }
 }
 
-impl fmt::Display for TypedSchema {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut fields = Vec::new();
-
-        fields.push(format!("type: {}", self.r#type));
-
-        if let Some(min) = &self.minimum {
-            fields.push(format!("minimum: {}", min));
+impl From<deser::EnumSchema> for EnumSchema {
+    fn from(deserialized: deser::EnumSchema) -> Self {
+        EnumSchema {
+            r#enum: deserialized.r#enum,
         }
-        if let Some(max) = &self.maximum {
-            fields.push(format!("maximum: {}", max));
-        }
-        if let Some(ex_min) = &self.exclusive_minimum {
-            fields.push(format!("exclusiveMinimum: {}", ex_min));
-        }
-        if let Some(ex_max) = &self.exclusive_maximum {
-            fields.push(format!("exclusiveMaximum: {}", ex_max));
-        }
-        if let Some(mult_of) = &self.multiple_of {
-            fields.push(format!("multipleOf: {}", mult_of));
-        }
-        if let Some(props) = &self.properties {
-            fields.push(format!("properties: {}", format_map(props)));
-        }
-        if let Some(req) = &self.required {
-            fields.push(format!("required: {:?}", req));
-        }
-        if let Some(add_props) = &self.additional_properties {
-            fields.push(format!("additionalProperties: {}", add_props));
-        }
-        if let Some(pattern_props) = &self.pattern_properties {
-            fields.push(format!("patternProperties: {}", format_map(pattern_props)));
-        }
-        if let Some(min_len) = &self.min_length {
-            fields.push(format!("minLength: {}", min_len));
-        }
-        if let Some(max_len) = &self.max_length {
-            fields.push(format!("maxLength: {}", max_len));
-        }
-        if let Some(pattern) = &self.pattern {
-            fields.push(format!("pattern: {}", pattern));
-        }
-        if let Some(items) = &self.items {
-            fields.push(format!("items: {}", items));
-        }
-        if let Some(prefix_items) = &self.prefix_items {
-            fields.push(format!("prefixItems: {}", format_vec(prefix_items)));
-        }
-        if let Some(contains) = &self.contains {
-            fields.push(format!("contains: {}", contains));
-        }
-
-        write!(f, "TypedSchema {{ {} }}", fields.join(", "))
     }
 }
 
-// Add this function at the end of the file
+/// Formats a map of values as a string, by joining them with commas
 fn format_map<V>(map: &HashMap<String, V>) -> String
 where
     V: fmt::Display,
@@ -257,238 +151,13 @@ where
     format!("[{}]", items.join(", "))
 }
 
-/// A type value is either a string or an array of strings
-impl TypeValue {
-    pub fn null() -> TypeValue {
-        TypeValue::Single(serde_yaml::Value::Null)
-    }
-
-    pub fn from_string<V>(value: V) -> TypeValue
-    where
-        V: Into<String>,
-    {
-        TypeValue::Single(serde_yaml::Value::String(value.into()))
-    }
-
-    pub fn number() -> TypeValue {
-        Self::from_string("number")
-    }
-
-    pub fn object() -> TypeValue {
-        Self::from_string("object")
-    }
-
-    pub fn string() -> TypeValue {
-        Self::from_string("string")
-    }
-
-    pub fn array<V>(items: Vec<V>) -> TypeValue
-    where
-        V: Into<String>,
-    {
-        let strings: Vec<String> = items.into_iter().map(|v| v.into()).collect();
-        TypeValue::Array(strings)
-    }
-
-    /// Returns this TypeValue as a simple list of allowed typestrings
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use yaml_schema::TypeValue;
-    ///
-    /// let single_type = TypeValue::from_string("string");
-    /// assert_eq!(single_type.as_list_of_allowed_types(), vec!["string".to_string()]);
-    ///
-    /// let multiple_types = TypeValue::Array(vec!["string".to_string(), "number".to_string()]);
-    /// assert_eq!(multiple_types.as_list_of_allowed_types(), vec!["string".to_string(), "number".to_string()]);
-    /// ```
-    pub fn as_list_of_allowed_types(&self) -> Vec<String> {
-        match self {
-            TypeValue::Single(s) => match s {
-                serde_yaml::Value::String(s) => vec![s.clone()],
-                _ => Vec::new(), // if `null`, etc., we return an empty list
-            },
-            TypeValue::Array(v) => v.clone(),
-        }
-    }
-}
-
-impl fmt::Display for TypeValue {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            TypeValue::Single(s) => match s {
-                serde_yaml::Value::String(s) => write!(f, "\"{}\"", s),
-                serde_yaml::Value::Null => write!(f, "null"),
-                _ => write!(f, "{:?}", s),
-            },
-            TypeValue::Array(v) => write!(f, "[{}]", v.join(", ")),
-        }
-    }
-}
-
-impl Default for TypeValue {
-    fn default() -> Self {
-        TypeValue::object()
-    }
-}
-
-impl fmt::Display for YamlSchemaNumber {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            YamlSchemaNumber::Integer(v) => write!(f, "{}", v),
-            YamlSchemaNumber::Float(v) => write!(f, "{}", v),
-        }
-    }
-}
-
-impl ConstSchema {
-    pub fn new<V>(value: V) -> ConstSchema
-    where
-        V: Into<serde_yaml::Value>,
-    {
-        ConstSchema {
-            r#const: value.into(),
-        }
-    }
-
-    pub fn null() -> ConstSchema {
-        ConstSchema {
-            r#const: serde_yaml::Value::Null,
-        }
-    }
-
-    pub fn string<V>(value: V) -> ConstSchema
-    where
-        V: Into<String>,
-    {
-        ConstSchema {
-            r#const: serde_yaml::Value::String(value.into()),
-        }
-    }
-}
-
-impl fmt::Display for ConstSchema {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Const {:?}", self.r#const)
-    }
-}
-
-impl EnumSchema {
-    pub fn new<V>(values: Vec<V>) -> EnumSchema
-    where
-        V: Into<serde_yaml::Value>,
-    {
-        let values = values.into_iter().map(|v| v.into()).collect();
-        EnumSchema { r#enum: values }
-    }
-}
-
-impl fmt::Display for EnumSchema {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Enum {:?}", self.r#enum)
-    }
-}
-
-impl fmt::Display for AdditionalProperties {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            AdditionalProperties::Boolean(b) => write!(f, "additionalProperties: {}", b),
-            AdditionalProperties::Type { r#type } => write!(f, "additionalProperties: {}", r#type),
-        }
-    }
-}
-
-impl fmt::Display for ArrayItemsValue {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            ArrayItemsValue::TypedSchema(s) => write!(f, "{}", s),
-            ArrayItemsValue::Boolean(b) => write!(f, "{}", b),
-        }
-    }
-}
-
-// Initialize the logger for tests
-#[cfg(test)]
-#[ctor::ctor]
-fn init() {
-    env_logger::builder()
-        .filter_level(log::LevelFilter::Trace)
-        .format_target(false)
-        .format_timestamp_secs()
-        .target(env_logger::Target::Stdout)
-        .init();
-}
-
-#[cfg(test)]
-mod tests {
-
-    use super::*;
-
-    #[test]
-    fn test_parse_empty_schema() {
-        let schema: YamlSchema = serde_yaml::from_str("").unwrap();
-        assert!(schema.is_none());
-    }
-
-    #[test]
-    fn test_parse_true_schema() {
-        let schema: YamlSchema = serde_yaml::from_str("true").unwrap();
-        let expected = YamlSchema::Boolean(true);
-        assert_eq!(expected, schema);
-    }
-
-    #[test]
-    fn test_parse_false_schema() {
-        let schema: YamlSchema = serde_yaml::from_str("false").unwrap();
-        let expected = YamlSchema::Boolean(false);
-        assert_eq!(expected, schema);
-    }
-
-    #[test]
-    fn test_parse_type_string_schema() {
-        let schema: YamlSchema = serde_yaml::from_str("type: string").unwrap();
-        let expected = YamlSchema::TypedSchema(Box::new(TypedSchema::string()));
-        assert_eq!(expected, schema);
-    }
-
-    #[test]
-    fn test_type_value_as_list_of_allowed_types() {
-        let single_type = TypeValue::string();
-        assert_eq!(
-            single_type.as_list_of_allowed_types(),
-            vec!["string".to_string()]
-        );
-
-        let multiple_types = TypeValue::array(vec!["string", "number"]);
-        assert_eq!(
-            multiple_types.as_list_of_allowed_types(),
-            vec!["string".to_string(), "number".to_string()]
-        );
-    }
-
-    #[test]
-    fn test_null_schema() {
-        let schema: YamlSchema = serde_yaml::from_str("type: null").unwrap();
-        match schema {
-            YamlSchema::TypedSchema(s) => {
-                assert_eq!(s.r#type, TypeValue::null());
-            }
-            _ => panic!("Expected a TypedSchema"),
-        }
-    }
-
-    #[test]
-    fn test_one_of_schema() {
-        let schema: YamlSchema = serde_yaml::from_str(
-            "oneOf:
-        - type: number
-          multipleOf: 5
-        - type: number
-          multipleOf: 3
-        ",
-        )
-        .unwrap();
-        println!("{}", schema);
+/// Formats a serde_yaml::Value as a string
+fn format_serde_yaml_value(value: &serde_yaml::Value) -> String {
+    match value {
+        serde_yaml::Value::Null => "null".to_string(),
+        serde_yaml::Value::Bool(b) => b.to_string(),
+        serde_yaml::Value::Number(n) => n.to_string(),
+        serde_yaml::Value::String(s) => format!("\"{}\"", s),
+        _ => format!("{:?}", value),
     }
 }

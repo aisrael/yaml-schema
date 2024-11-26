@@ -1,8 +1,8 @@
+use cucumber::{gherkin::Step, given, then, World};
 use log::{debug, error};
 use std::cell::RefCell;
 use std::rc::Rc;
-
-use cucumber::{gherkin::Step, given, then, World};
+use yaml_schema::deser::{self, Deser};
 use yaml_schema::engine::ValidationError;
 use yaml_schema::{Engine, YamlSchema};
 
@@ -17,8 +17,14 @@ pub struct BasicsWorld {
 async fn a_yaml_schema(world: &mut BasicsWorld, step: &Step) {
     let schema = step.docstring().unwrap();
     debug!("schema: {:?}", schema);
-    let yaml_schema: YamlSchema = serde_yaml::from_str(schema).unwrap();
-    world.yaml_schema = yaml_schema;
+    let deser_schema: deser::YamlSchema = serde_yaml::from_str(schema).unwrap();
+    match deser_schema.deserialize() {
+        Ok(yaml_schema) => world.yaml_schema = yaml_schema,
+        Err(e) => {
+            error!("Error: {:?}", e);
+            world.yaml_schema_error = Some(e);
+        }
+    }
 }
 
 fn accepts(schema: &YamlSchema, value: &serde_yaml::Value) -> bool {
@@ -49,6 +55,7 @@ async fn it_should_not_accept(world: &mut BasicsWorld, step: &Step) {
     let input: serde_yaml::Value = serde_yaml::from_str(raw_input).unwrap();
     debug!("input: {:?}", input);
     let schema = &world.yaml_schema;
+    debug!("schema: {:?}", schema);
     let engine = Engine::new(schema);
     match engine.evaluate(&input, true) {
         Ok(context) => {
@@ -88,6 +95,9 @@ async fn it_should_fail_with(world: &mut BasicsWorld, expected_error_message: St
             }
             yaml_schema::YamlSchemaError::NotYetImplemented => {
                 assert_eq!(expected_error_message, "a NotYetImplemented error");
+            }
+            yaml_schema::YamlSchemaError::UnsupportedType(actual_error_message) => {
+                assert_eq!(expected_error_message, *actual_error_message)
             }
             _ => panic!("Unexpected error: {:?}", yaml_schema_error),
         }
