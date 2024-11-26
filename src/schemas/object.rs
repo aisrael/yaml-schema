@@ -64,14 +64,12 @@ impl ObjectSchema {
 
             // Then, we check if additional properties are allowed or not
             if let Some(additional_properties) = &self.additional_properties {
-                if !try_validate_value_against_additional_properties(
+                try_validate_value_against_additional_properties(
                     context,
                     &key,
                     value,
                     additional_properties,
-                )? {
-                    return Ok(());
-                }
+                )?;
             }
             // Then we check if pattern_properties matches
             if let Some(pattern_properties) = &self.pattern_properties {

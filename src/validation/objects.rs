@@ -45,7 +45,10 @@ pub fn try_validate_value_against_additional_properties(
             // returning `false` signals fail fast
             return Ok(false);
         }
-        _ => return unimplemented!(),
+        // if additional_properties: a schema, then validate against it
+        BoolOrTypedSchema::TypedSchema(schema) => {
+            schema.validate(&sub_context, value)?;
+        }
     }
     Ok(true)
 }
