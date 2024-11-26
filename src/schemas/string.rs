@@ -17,7 +17,11 @@ impl fmt::Display for StringSchema {
 }
 
 impl Validator for StringSchema {
-    fn validate(&self, context: &Context, value: &serde_yaml::Value) -> Result<(), YamlSchemaError> {
+    fn validate(
+        &self,
+        context: &Context,
+        value: &serde_yaml::Value,
+    ) -> Result<(), YamlSchemaError> {
         match validate_string(
             self.min_length,
             self.max_length,

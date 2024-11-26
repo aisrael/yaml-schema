@@ -1,8 +1,8 @@
 use std::fmt;
 
-use crate::Number;
-use crate::validation::Validator;
 use crate::validation::Context;
+use crate::validation::Validator;
+use crate::Number;
 use crate::YamlSchemaError;
 
 /// A number schema
@@ -21,9 +21,12 @@ impl fmt::Display for NumberSchema {
     }
 }
 
-
 impl Validator for NumberSchema {
-    fn validate(&self, context: &Context, value: &serde_yaml::Value) -> Result<(), YamlSchemaError> {
+    fn validate(
+        &self,
+        context: &Context,
+        value: &serde_yaml::Value,
+    ) -> Result<(), YamlSchemaError> {
         if value.is_i64() {
             match value.as_i64() {
                 Some(i) => self.validate_number_i64(context, i),

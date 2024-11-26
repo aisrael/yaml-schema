@@ -1,11 +1,11 @@
+use log::debug;
 use std::collections::HashMap;
 use std::fmt;
-use log::debug;
 
 use super::BoolOrTypedSchema;
-use crate::{Context,Validator, YamlSchema, YamlSchemaError};
 use crate::validation::objects::try_validate_value_against_additional_properties;
 use crate::validation::objects::try_validate_value_against_properties;
+use crate::{Context, PropertyNamesValue, Validator, YamlSchema, YamlSchemaError};
 
 /// An object schema
 #[derive(Debug, Default, PartialEq)]
@@ -17,11 +17,6 @@ pub struct ObjectSchema {
     pub property_names: Option<PropertyNamesValue>,
     pub min_properties: Option<usize>,
     pub max_properties: Option<usize>,
-}
-
-#[derive(Debug, PartialEq)]
-pub struct PropertyNamesValue {
-    pub pattern: String,
 }
 
 impl fmt::Display for ObjectSchema {
@@ -155,8 +150,14 @@ mod tests {
     #[test]
     fn test_should_validate_properties() {
         let mut properties = HashMap::new();
-        properties.insert("foo".to_string(), YamlSchema::String(StringSchema::default()));
-        properties.insert("bar".to_string(), YamlSchema::Number(NumberSchema::default()));
+        properties.insert(
+            "foo".to_string(),
+            YamlSchema::String(StringSchema::default()),
+        );
+        properties.insert(
+            "bar".to_string(),
+            YamlSchema::Number(NumberSchema::default()),
+        );
         let schema = ObjectSchema {
             properties: Some(properties),
             ..Default::default()
@@ -184,9 +185,6 @@ mod tests {
         let errors = context.errors.borrow();
         let first_error = errors.get(0).unwrap();
         assert_eq!(first_error.path, "foo");
-        assert_eq!(
-            first_error.error,
-            "Expected a string, but got: Number(42)"
-        );
+        assert_eq!(first_error.error, "Expected a string, but got: Number(42)");
     }
 }

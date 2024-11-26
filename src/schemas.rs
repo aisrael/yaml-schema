@@ -22,6 +22,8 @@ pub use r#const::ConstSchema;
 pub use r#enum::EnumSchema;
 pub use string::StringSchema;
 
+use crate::YamlSchema;
+
 #[derive(Debug, PartialEq)]
 pub enum TypedSchema {
     Array(ArraySchema),
@@ -30,6 +32,20 @@ pub enum TypedSchema {
     Number(NumberSchema),
     Object(ObjectSchema),
     String(StringSchema),
+}
+
+impl From<YamlSchema> for TypedSchema {
+    fn from(schema: YamlSchema) -> Self {
+        match schema {
+            YamlSchema::Array(a) => TypedSchema::Array(a),
+            YamlSchema::BooleanSchema(b) => TypedSchema::Boolean,
+            YamlSchema::Empty => TypedSchema::Empty,
+            YamlSchema::Number(n) => TypedSchema::Number(n),
+            YamlSchema::Object(o) => TypedSchema::Object(o),
+            YamlSchema::String(s) => TypedSchema::String(s),
+            _ => unimplemented!(),
+        }
+    }
 }
 
 /// A type value is either a string or an array of strings

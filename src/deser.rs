@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::fmt;
 
 use crate::error::YamlSchemaError;
-use crate::unsupported_type;
+use crate::{PropertyNamesValue, unsupported_type};
 
 use super::{format_map, format_vec, Number};
 
@@ -73,10 +73,6 @@ pub enum AdditionalProperties {
     Type { r#type: TypeValue },
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
-pub struct PropertyNamesValue {
-    pub pattern: String,
-}
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(untagged)]
@@ -247,6 +243,40 @@ impl Deser<crate::YamlSchema> for TypedSchema {
                     "array" => Ok(crate::YamlSchema::Array(crate::schemas::ArraySchema::from(
                         self,
                     ))),
+                    "object" => Ok(crate::YamlSchema::Object(crate::schemas::ObjectSchema {
+                        properties: self.properties.as_ref().map(|p| {
+                             p.iter()
+                                .map(|(k, v)| (k.clone(), v.deserialize().unwrap()))
+                                .collect()
+                        }),
+                        required: self.required.clone(),
+                        additional_properties: self.additional_properties.as_ref().map(|a| match a {
+                            AdditionalProperties::Boolean(b) => crate::schemas::BoolOrTypedSchema::Boolean(*b),
+                            AdditionalProperties::Type { r#type } => match r#type {
+                                TypeValue::Single(s) => {
+                                    let yaml_schema = YamlSchema::TypedSchema(Box::new(TypedSchema {
+                                        r#type: TypeValue::Single(s.clone()),
+                                        ..Default::default()
+                                    }));
+                                    let schema = match yaml_schema.deserialize() {
+                                        Ok(y) => y.into(),
+                                        Err(e) => panic!("Error: {}", e),
+                                    };
+                                    crate::schemas::BoolOrTypedSchema::TypedSchema(Box::new(schema))
+                                },
+                                TypeValue::Array(a) => panic!("Can't handle multiple types yet: {}", format_vec(&a)),
+                                unsupported => panic!("Unsupported type: {}", unsupported),
+                            },
+                        }),
+                        pattern_properties: self.pattern_properties.as_ref().map(|p| {
+                            p.iter()
+                                .map(|(k, v)| (k.clone(), v.deserialize().unwrap()))
+                                .collect()
+                        }),
+                        property_names: self.property_names.clone(),
+                        min_properties: self.min_properties,
+                        max_properties: self.max_properties,
+                    })),
                     unknown => unsupported_type!("Unrecognized type '{}'!", unknown),
                 },
                 serde_yaml::Value::Null => Ok(crate::YamlSchema::Empty),

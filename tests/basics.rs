@@ -55,6 +55,7 @@ async fn it_should_not_accept(world: &mut BasicsWorld, step: &Step) {
     let input: serde_yaml::Value = serde_yaml::from_str(raw_input).unwrap();
     debug!("input: {:?}", input);
     let schema = &world.yaml_schema;
+    debug!("schema: {:?}", schema);
     let engine = Engine::new(schema);
     match engine.evaluate(&input, true) {
         Ok(context) => {

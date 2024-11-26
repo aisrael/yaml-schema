@@ -49,6 +49,12 @@ impl fmt::Display for Number {
     }
 }
 
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct PropertyNamesValue {
+    pub pattern: String,
+}
+
 /// A YamlSchema is either empty, a boolean, a typed schema, or an enum schema
 #[derive(Debug, Default, PartialEq)]
 pub enum YamlSchema {
