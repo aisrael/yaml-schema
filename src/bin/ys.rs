@@ -1,5 +1,4 @@
 use clap::{Parser, Subcommand};
-use yaml_rust2::Yaml;
 use yaml_schema::deser::Deser;
 use yaml_schema::{deser, YamlSchema};
 use yaml_schema::{version, Engine};

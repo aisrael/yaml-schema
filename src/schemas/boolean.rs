@@ -1,4 +1,4 @@
-use std::fmt::{self, format};
+use std::fmt::{self};
 
 use crate::Validator;
 

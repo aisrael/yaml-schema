@@ -1,18 +1,10 @@
-use log::{debug, error};
-use serde_yaml::Number;
+use log::debug;
 
-use super::validation::objects::try_validate_value_against_properties;
-use super::validation::one_of::validate_one_of;
-use super::validation::strings::validate_string;
 use super::validation::Validator;
 use crate::error::YamlSchemaError;
-use crate::format_serde_yaml_value;
-use crate::validation::objects::try_validate_value_against_additional_properties;
 pub use crate::validation::Context;
 pub use crate::validation::ValidationError;
-use crate::{
-    fail_fast, format_vec, generic_error, ConstSchema, EnumSchema, OneOfSchema, YamlSchema,
-};
+use crate::YamlSchema;
 
 pub struct Engine<'a> {
     pub schema: &'a YamlSchema,

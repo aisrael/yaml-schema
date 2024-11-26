@@ -4,7 +4,7 @@ use std::fmt;
 
 use crate::error::YamlSchemaError;
 use crate::schemas::BooleanSchema;
-use crate::{unsupported_type, ArraySchema, PropertyNamesValue};
+use crate::{unsupported_type, PropertyNamesValue};
 
 use super::{format_map, format_vec, Number};
 
@@ -278,10 +278,9 @@ impl Deser<crate::YamlSchema> for TypedSchema {
                                             schema,
                                         ))
                                     }
-                                    TypeValue::Array(a) => panic!(
-                                        "Can't handle multiple types yet: {}",
-                                        format_vec(&a)
-                                    ),
+                                    TypeValue::Array(a) => {
+                                        panic!("Can't handle multiple types yet: {}", format_vec(a))
+                                    }
                                     unsupported => panic!("Unsupported type: {}", unsupported),
                                 },
                             },

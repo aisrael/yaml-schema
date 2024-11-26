@@ -183,7 +183,7 @@ mod tests {
         let context = engine.evaluate(&value, true).unwrap();
         assert!(context.has_errors());
         let errors = context.errors.borrow();
-        let first_error = errors.get(0).unwrap();
+        let first_error = errors.first().unwrap();
         assert_eq!(first_error.path, "foo");
         assert_eq!(first_error.error, "Expected a string, but got: Number(42)");
     }

@@ -3,7 +3,7 @@ use log::debug;
 use std::collections::HashMap;
 
 use super::Validator;
-use crate::schemas::{BoolOrTypedSchema, TypedSchema};
+use crate::schemas::BoolOrTypedSchema;
 use crate::validation::Context;
 use crate::{YamlSchema, YamlSchemaError};
 
