@@ -40,7 +40,7 @@ impl From<YamlSchema> for TypedSchema {
     fn from(schema: YamlSchema) -> Self {
         match schema {
             YamlSchema::Array(a) => TypedSchema::Array(a),
-            YamlSchema::BooleanSchema(b) => TypedSchema::Boolean,
+            YamlSchema::BooleanSchema(_b) => TypedSchema::Boolean,
             YamlSchema::Number(n) => TypedSchema::Number(n),
             YamlSchema::Object(o) => TypedSchema::Object(o),
             YamlSchema::String(s) => TypedSchema::String(s),

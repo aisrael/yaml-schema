@@ -22,7 +22,7 @@ impl From<crate::deser::ArrayItemsValue> for BoolOrTypedSchema {
     fn from(value: deser::ArrayItemsValue) -> Self {
         match value {
             deser::ArrayItemsValue::Boolean(b) => BoolOrTypedSchema::Boolean(b),
-            deser::ArrayItemsValue::TypedSchema(t) => {
+            deser::ArrayItemsValue::TypedSchema(_t) => {
                 unimplemented!()
             }
         }

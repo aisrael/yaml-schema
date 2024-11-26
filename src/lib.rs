@@ -94,15 +94,6 @@ impl fmt::Display for YamlSchema {
     }
 }
 
-impl From<&crate::deser::TypedSchema> for TypedSchema {
-    fn from(value: &crate::deser::TypedSchema) -> Self {
-        match &value.r#type {
-            crate::deser::TypeValue::Single(s) => deser_typed_schema(value),
-            crate::deser::TypeValue::Array(a) => unimplemented!(),
-        }
-    }
-}
-
 fn deser_typed_schema(t: &crate::deser::TypedSchema) -> TypedSchema {
     match &t.r#type {
         deser::TypeValue::Single(s) => match s {

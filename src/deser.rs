@@ -281,7 +281,6 @@ impl Deser<crate::YamlSchema> for TypedSchema {
                                     TypeValue::Array(a) => {
                                         panic!("Can't handle multiple types yet: {}", format_vec(a))
                                     }
-                                    unsupported => panic!("Unsupported type: {}", unsupported),
                                 },
                             },
                         ),
