@@ -58,7 +58,11 @@ impl Validator for YamlSchema {
             }
             YamlSchema::Const(const_schema) => const_schema.validate(context, value),
             YamlSchema::Enum(enum_schema) => enum_schema.validate(context, value),
+            YamlSchema::Object(object_schema) => object_schema.validate(context, value),
             YamlSchema::OneOf(one_of_schema) => one_of_schema.validate(context, value),
+            YamlSchema::String(string_schema) => string_schema.validate(context, value),
+            YamlSchema::Number(number_schema) => number_schema.validate(context, value),
+            YamlSchema::Array(array_schema) => unimplemented!("Array schema not implemented yet!"),
             _ => unimplemented!(),
         }
     }

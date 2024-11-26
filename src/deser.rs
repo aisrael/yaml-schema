@@ -2,8 +2,8 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
 
-use crate::unsupported_type;
 use crate::error::YamlSchemaError;
+use crate::unsupported_type;
 
 use super::{format_map, format_vec, Number};
 

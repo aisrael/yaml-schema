@@ -65,7 +65,7 @@ Feature: Basic YAML schema
       data: structure
       ```
 
-  Scenario: "type: foo" should error ZZZ
+  Scenario: "type: foo" should error
     Given a YAML schema:
       ```
       type: foo
@@ -122,7 +122,7 @@ Feature: Basic YAML schema
       data: structure
       ```
 
-  Scenario: "type: object" should validate properties
+  Scenario: "type: object" should validate properties ZZZ
     Given a YAML schema:
       ```
       type: object
