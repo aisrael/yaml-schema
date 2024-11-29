@@ -1,3 +1,4 @@
+use eyre::Result;
 use std::fmt::{self};
 
 use crate::Validator;
@@ -29,7 +30,7 @@ impl Validator for BooleanSchema {
         &self,
         context: &crate::validation::Context,
         value: &serde_yaml::Value,
-    ) -> Result<(), crate::error::YamlSchemaError> {
+    ) -> Result<()> {
         if !value.is_bool() {
             context.add_error(format!("Expected: boolean, found: {:?}", value));
         }

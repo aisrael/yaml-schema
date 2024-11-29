@@ -19,7 +19,7 @@ pub enum YamlSchemaError {
 macro_rules! fail_fast {
     ($context:expr) => {
         if $context.fail_fast {
-            return Err(YamlSchemaError::FailFast);
+            return Err(eyre::Report::new(YamlSchemaError::FailFast));
         }
     };
 }
@@ -27,19 +27,19 @@ macro_rules! fail_fast {
 #[macro_export]
 macro_rules! unsupported_type {
     ($s:literal, $($e:expr),+) => {
-        Err(YamlSchemaError::UnsupportedType(format!($s, $($e),+)))
+        Err(eyre::Report::new(YamlSchemaError::UnsupportedType(format!($s, $($e),+))))
     };
     ($e:expr) => {
-        Err(YamlSchemaError::UnsupportedType($e))
+        Err(eyre::Report::new(YamlSchemaError::UnsupportedType($e)))
     };
 }
 
 #[macro_export]
 macro_rules! generic_error {
     ($s:literal, $($e:expr),+) => {
-        Err(YamlSchemaError::GenericError(format!($s, $($e),+)))
+        Err(eyre::Report::new(YamlSchemaError::GenericError(format!($s, $($e),+))))
     };
     ($s:literal) => {
-        YamlSchemaError::GenericError($s.to_string())
+        Err(eyre::Report::new(YamlSchemaError::GenericError($s.to_string())))
     };
 }

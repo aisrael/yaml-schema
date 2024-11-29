@@ -1,39 +1,42 @@
 use super::Validator;
 use crate::{Context, YamlSchema, YamlSchemaError};
+use eyre::{eyre, Result};
 use log::{debug, error};
 
 pub fn validate_one_of(
     context: &Context,
     schemas: &Vec<YamlSchema>,
     value: &serde_yaml::Value,
-) -> Result<bool, YamlSchemaError> {
+) -> Result<bool> {
     let mut one_of_is_valid = false;
     for schema in schemas {
         debug!(
             "OneOf: Validating value: {:?} against schema: {}",
             value, schema
         );
-        let sub_context = Context::new(context.fail_fast);
+        let sub_context = Context::new(true);
         let sub_result = schema.validate(&sub_context, value);
-        match sub_result {
-            Ok(()) | Err(YamlSchemaError::FailFast) => {
-                debug!(
-                    "OneOf: sub_context.errors: {}",
-                    sub_context.errors.borrow().len()
-                );
-                if sub_context.has_errors() {
-                    continue;
-                }
+        if sub_result.as_ref().is_err_and(|report| {
+            !report
+                .downcast_ref::<YamlSchemaError>()
+                .is_some_and(|e| e == &YamlSchemaError::FailFast)
+        }) {
+            return Err(eyre!(sub_result.unwrap_err()));
+        }
+        debug!(
+            "OneOf: sub_context.errors: {}",
+            sub_context.errors.borrow().len()
+        );
+        if sub_context.has_errors() {
+            continue;
+        }
 
-                if one_of_is_valid {
-                    error!("OneOf: Value matched multiple schemas in `oneOf`!");
-                    context.add_error("Value matched multiple schemas in `oneOf`!");
-                    fail_fast!(context);
-                } else {
-                    one_of_is_valid = true;
-                }
-            }
-            Err(e) => return Err(e),
+        if one_of_is_valid {
+            error!("OneOf: Value matched multiple schemas in `oneOf`!");
+            context.add_error("Value matched multiple schemas in `oneOf`!");
+            fail_fast!(context);
+        } else {
+            one_of_is_valid = true;
         }
     }
     debug!("OneOf: one_of_is_valid: {}", one_of_is_valid);

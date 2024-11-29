@@ -1,4 +1,5 @@
 use cucumber::{gherkin::Step, given, then, World};
+use eyre::Report;
 use log::{debug, error};
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -9,7 +10,7 @@ use yaml_schema::{Engine, YamlSchema};
 #[derive(Debug, Default, World)]
 pub struct BasicsWorld {
     yaml_schema: YamlSchema,
-    yaml_schema_error: Option<yaml_schema::YamlSchemaError>,
+    yaml_schema_error: Option<Report>,
     errors: Option<Rc<RefCell<Vec<ValidationError>>>>,
 }
 
@@ -86,8 +87,11 @@ fn the_error_message_should_be(world: &mut BasicsWorld, expected_error_message: 
 
 #[then(expr = "it should fail with {string}")]
 async fn it_should_fail_with(world: &mut BasicsWorld, expected_error_message: String) {
-    if let Some(yaml_schema_error) = world.yaml_schema_error.as_ref() {
-        match yaml_schema_error {
+    if let Some(report) = world.yaml_schema_error.as_ref() {
+        match report
+            .downcast_ref::<yaml_schema::YamlSchemaError>()
+            .unwrap()
+        {
             yaml_schema::YamlSchemaError::GenericError(actual_error_message) => {
                 debug!("expected_error_message: {:?}", expected_error_message);
                 debug!("actual_error_message: {:?}", actual_error_message);
@@ -99,7 +103,7 @@ async fn it_should_fail_with(world: &mut BasicsWorld, expected_error_message: St
             yaml_schema::YamlSchemaError::UnsupportedType(actual_error_message) => {
                 assert_eq!(expected_error_message, *actual_error_message)
             }
-            _ => panic!("Unexpected error: {:?}", yaml_schema_error),
+            _ => panic!("Unexpected error: {:?}", report),
         }
     } else {
         panic!("Expected an error message, but there was no error!");

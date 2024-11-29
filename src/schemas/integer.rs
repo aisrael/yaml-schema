@@ -1,3 +1,4 @@
+use eyre::Result;
 use std::fmt;
 
 use crate::validation::Context;
@@ -22,11 +23,7 @@ impl fmt::Display for IntegerSchema {
 }
 
 impl Validator for IntegerSchema {
-    fn validate(
-        &self,
-        context: &Context,
-        value: &serde_yaml::Value,
-    ) -> Result<(), YamlSchemaError> {
+    fn validate(&self, context: &Context, value: &serde_yaml::Value) -> Result<()> {
         match value.as_i64() {
             Some(i) => self.validate_number_i64(context, i),
             None => {

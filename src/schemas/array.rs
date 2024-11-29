@@ -6,6 +6,7 @@ use crate::deser::Deser;
 use crate::format_vec;
 use crate::validation::Validator;
 use crate::{deser_typed_schema, YamlSchema, YamlSchemaError};
+use eyre::Result;
 
 /// An array schema represents an array
 #[derive(Debug, PartialEq)]
@@ -49,11 +50,7 @@ impl From<&crate::deser::TypedSchema> for ArraySchema {
 }
 
 impl Validator for ArraySchema {
-    fn validate(
-        &self,
-        context: &crate::Context,
-        value: &serde_yaml::Value,
-    ) -> Result<(), crate::YamlSchemaError> {
+    fn validate(&self, context: &crate::Context, value: &serde_yaml::Value) -> Result<()> {
         if !value.is_sequence() {
             context.add_error(format!("Expected an array, but got: {:?}", value));
             fail_fast!(context);

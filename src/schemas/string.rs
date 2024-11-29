@@ -1,6 +1,7 @@
+use eyre::Result;
 use std::fmt;
 
-use crate::{validation::strings::validate_string, Context, Validator, YamlSchemaError};
+use crate::{validation::strings::validate_string, Context, Validator};
 
 /// A string schema
 #[derive(Debug, PartialEq, Default)]
@@ -17,11 +18,7 @@ impl fmt::Display for StringSchema {
 }
 
 impl Validator for StringSchema {
-    fn validate(
-        &self,
-        context: &Context,
-        value: &serde_yaml::Value,
-    ) -> Result<(), YamlSchemaError> {
+    fn validate(&self, context: &Context, value: &serde_yaml::Value) -> Result<()> {
         match validate_string(
             self.min_length,
             self.max_length,
@@ -36,7 +33,7 @@ impl Validator for StringSchema {
                 }
                 Ok(())
             }
-            Err(e) => generic_error!("{}", e),
+            Err(e) => Err(e),
         }
     }
 }

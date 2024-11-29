@@ -1,3 +1,4 @@
+use eyre::Result;
 use log::debug;
 
 use super::validation::Validator;
@@ -15,20 +16,21 @@ impl<'a> Engine<'a> {
         Engine { schema }
     }
 
-    pub fn evaluate(
-        &self,
-        yaml: &serde_yaml::Value,
-        fail_fast: bool,
-    ) -> Result<Context, YamlSchemaError> {
+    pub fn evaluate(&self, yaml: &serde_yaml::Value, fail_fast: bool) -> Result<Context> {
         debug!("Engine is running");
         let context = Context::new(fail_fast);
         let result = self.schema.validate(&context, yaml);
         debug!("Engine: result: {:?}", result);
         debug!("Engine: context.errors: {}", context.errors.borrow().len());
-        match result {
-            Ok(()) | Err(YamlSchemaError::FailFast) => Ok(context),
-            Err(e) => Err(e),
+        if result.is_err() {
+            let report = result.unwrap_err();
+            if let Some(YamlSchemaError::FailFast) = report.downcast_ref::<YamlSchemaError>() {
+                return Ok(context);
+            } else {
+                return Err(report);
+            }
         }
+        Ok(context)
     }
 }
 

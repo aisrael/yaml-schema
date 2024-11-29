@@ -1,3 +1,4 @@
+use eyre::Result;
 /// The schemas defined in the YAML schema language
 use std::fmt;
 
@@ -70,11 +71,7 @@ impl fmt::Display for TypedSchema {
 }
 
 impl Validator for TypedSchema {
-    fn validate(
-        &self,
-        context: &crate::Context,
-        value: &serde_yaml::Value,
-    ) -> Result<(), crate::YamlSchemaError> {
+    fn validate(&self, context: &crate::Context, value: &serde_yaml::Value) -> Result<()> {
         match self {
             TypedSchema::Array(a) => a.validate(context, value),
             TypedSchema::Boolean => Ok(()),

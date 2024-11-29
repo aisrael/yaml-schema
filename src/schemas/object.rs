@@ -1,3 +1,4 @@
+use eyre::Result;
 use log::debug;
 use std::collections::HashMap;
 use std::fmt;
@@ -27,11 +28,7 @@ impl fmt::Display for ObjectSchema {
 
 impl Validator for ObjectSchema {
     /// Validate the object according to the schema rules
-    fn validate(
-        &self,
-        context: &Context,
-        value: &serde_yaml::Value,
-    ) -> Result<(), YamlSchemaError> {
+    fn validate(&self, context: &Context, value: &serde_yaml::Value) -> Result<()> {
         debug!("Validating object: {:?}", value);
         match value.as_mapping() {
             Some(mapping) => self.validate_object_mapping(context, mapping),
@@ -48,7 +45,7 @@ impl ObjectSchema {
         &self,
         context: &Context,
         mapping: &serde_yaml::Mapping,
-    ) -> Result<(), YamlSchemaError> {
+    ) -> Result<()> {
         for (k, value) in mapping {
             let key = match k {
                 serde_yaml::Value::String(s) => s.clone(),
@@ -96,10 +93,10 @@ impl ObjectSchema {
                 })?;
                 debug!("Regex for property names: {}", re.as_str());
                 if !re.is_match(key.as_str()) {
-                    return Err(YamlSchemaError::GenericError(format!(
+                    return generic_error!(
                         "Property name '{}' does not match pattern specified in `propertyNames`!",
                         key
-                    )));
+                    );
                 }
             }
         }
@@ -108,10 +105,7 @@ impl ObjectSchema {
         if let Some(required) = &self.required {
             for required_property in required {
                 if !mapping.contains_key(required_property) {
-                    return Err(YamlSchemaError::GenericError(format!(
-                        "Required property '{}' is missing!",
-                        required_property
-                    )));
+                    return generic_error!("Required property '{}' is missing!", required_property);
                 }
             }
         }
@@ -119,19 +113,19 @@ impl ObjectSchema {
         // Validate minProperties
         if let Some(min_properties) = &self.min_properties {
             if mapping.len() < *min_properties {
-                return Err(YamlSchemaError::GenericError(format!(
+                return generic_error!(
                     "Object has too few properties! Minimum is {}!",
                     min_properties
-                )));
+                );
             }
         }
         // Validate maxProperties
         if let Some(max_properties) = &self.max_properties {
             if mapping.len() > *max_properties {
-                return Err(YamlSchemaError::GenericError(format!(
+                return generic_error!(
                     "Object has too many properties! Maximum is {}!",
                     max_properties
-                )));
+                );
             }
         }
 

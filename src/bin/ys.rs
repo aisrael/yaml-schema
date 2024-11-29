@@ -1,4 +1,5 @@
 use clap::{Parser, Subcommand};
+use eyre::Result;
 use yaml_schema::deser::Deser;
 use yaml_schema::{deser, YamlSchema};
 use yaml_schema::{version, Engine};
@@ -53,7 +54,7 @@ fn main() {
 }
 
 /// The `ys validate` command
-fn command_validate(opts: Opts) -> Result<i32, eyre::Report> {
+fn command_validate(opts: Opts) -> Result<i32> {
     // Currently, we only support a single schema file
     // TODO: Support multiple schema files
     let schema_file = std::fs::File::open(opts.schemas.first().unwrap())?;
@@ -83,6 +84,6 @@ fn command_validate(opts: Opts) -> Result<i32, eyre::Report> {
                 Ok(1)
             }
         }
-        Err(e) => Err(e.into()),
+        Err(e) => Err(e),
     }
 }
