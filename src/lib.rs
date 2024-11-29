@@ -97,7 +97,7 @@ impl fmt::Display for YamlSchema {
     }
 }
 
-fn deser_typed_schema(t: &crate::deser::TypedSchema) -> TypedSchema {
+fn deser_typed_schema(t: &deser::TypedSchema) -> TypedSchema {
     match &t.r#type {
         deser::TypeValue::Single(s) => match s {
             serde_yaml::Value::String(s) => match s.as_str() {
