@@ -1,9 +1,10 @@
+use log::{debug, error};
+
 use super::Validator;
 use crate::Context;
 use crate::Error;
 use crate::Result;
 use crate::YamlSchema;
-use log::{debug, error};
 
 pub fn validate_one_of(
     context: &Context,

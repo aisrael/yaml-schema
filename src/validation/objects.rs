@@ -2,10 +2,10 @@
 use log::debug;
 use std::collections::HashMap;
 
-use super::Validator;
 use crate::schemas::BoolOrTypedSchema;
 use crate::validation::Context;
 use crate::Result;
+use crate::Validator;
 use crate::YamlSchema;
 
 pub fn try_validate_value_against_properties(
