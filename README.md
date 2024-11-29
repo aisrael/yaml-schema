@@ -1,4 +1,5 @@
-# ys - yaml-schema
+ys - yaml-schema
+====
 
 [![CI Tests](https://github.com/aisrael/yaml-schema/actions/workflows/ci-tests.yaml/badge.svg)](https://github.com/aisrael/yaml-schema/actions/workflows/ci-tests.yaml)
 
