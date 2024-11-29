@@ -1,3 +1,7 @@
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::fmt;
+
 pub mod deser;
 pub mod engine;
 #[macro_use]
@@ -7,14 +11,20 @@ pub mod validation;
 
 pub use engine::Engine;
 pub use error::Error;
-pub use schemas::{
-    ArraySchema, ConstSchema, EnumSchema, IntegerSchema, NumberSchema, ObjectSchema, OneOfSchema,
-    StringSchema,
-};
-use schemas::{BooleanSchema, TypedSchema};
-use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, fmt};
-pub use validation::{Context, Validator};
+pub use schemas::ArraySchema;
+pub use schemas::BoolOrTypedSchema;
+pub use schemas::ConstSchema;
+pub use schemas::EnumSchema;
+pub use schemas::IntegerSchema;
+pub use schemas::NumberSchema;
+pub use schemas::ObjectSchema;
+pub use schemas::OneOfSchema;
+pub use schemas::StringSchema;
+pub use validation::Context;
+pub use validation::Validator;
+
+use schemas::BooleanSchema;
+use schemas::TypedSchema;
 
 // Returns the library version, which reflects the crate version
 pub fn version() -> String {
@@ -97,7 +107,7 @@ impl fmt::Display for YamlSchema {
     }
 }
 
-fn deser_typed_schema(t: &deser::TypedSchema) -> TypedSchema {
+fn deser_typed_schema(t: &crate::deser::TypedSchema) -> TypedSchema {
     match &t.r#type {
         deser::TypeValue::Single(s) => match s {
             serde_yaml::Value::String(s) => match s.as_str() {

@@ -1,8 +1,13 @@
-use clap::{Parser, Subcommand};
-use eyre::{Context, Result};
+use clap::Parser;
+use clap::Subcommand;
+use eyre::Context;
+use eyre::Result;
+
+use yaml_schema::deser;
 use yaml_schema::deser::Deser;
-use yaml_schema::{deser, YamlSchema};
-use yaml_schema::{version, Engine};
+use yaml_schema::version;
+use yaml_schema::Engine;
+use yaml_schema::YamlSchema;
 
 #[derive(Parser, Debug, Default)]
 #[command(name = "ys")]
