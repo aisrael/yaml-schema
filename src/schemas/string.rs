@@ -1,6 +1,7 @@
 use std::fmt;
 
-use crate::{validation::strings::validate_string, Context, Error, Validator};
+use crate::Result;
+use crate::{validation::strings::validate_string, Context, Validator};
 
 /// A string schema
 #[derive(Debug, PartialEq, Default)]
@@ -17,7 +18,7 @@ impl fmt::Display for StringSchema {
 }
 
 impl Validator for StringSchema {
-    fn validate(&self, context: &Context, value: &serde_yaml::Value) -> Result<(), Error> {
+    fn validate(&self, context: &Context, value: &serde_yaml::Value) -> Result<()> {
         match validate_string(
             self.min_length,
             self.max_length,

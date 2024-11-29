@@ -5,6 +5,7 @@ use std::fmt;
 use super::BoolOrTypedSchema;
 use crate::validation::objects::try_validate_value_against_additional_properties;
 use crate::validation::objects::try_validate_value_against_properties;
+use crate::Result;
 use crate::{Context, Error, PropertyNamesValue, Validator, YamlSchema};
 
 /// An object schema
@@ -27,7 +28,7 @@ impl fmt::Display for ObjectSchema {
 
 impl Validator for ObjectSchema {
     /// Validate the object according to the schema rules
-    fn validate(&self, context: &Context, value: &serde_yaml::Value) -> Result<(), Error> {
+    fn validate(&self, context: &Context, value: &serde_yaml::Value) -> Result<()> {
         debug!("Validating object: {:?}", value);
         match value.as_mapping() {
             Some(mapping) => self.validate_object_mapping(context, mapping),
@@ -44,7 +45,7 @@ impl ObjectSchema {
         &self,
         context: &Context,
         mapping: &serde_yaml::Mapping,
-    ) -> Result<(), Error> {
+    ) -> Result<()> {
         for (k, value) in mapping {
             let key = match k {
                 serde_yaml::Value::String(s) => s.clone(),

@@ -21,7 +21,7 @@ pub enum Error {
 macro_rules! fail_fast {
     ($context:expr) => {
         if $context.fail_fast {
-            return Err(Error::FailFast);
+            return Err($crate::Error::FailFast);
         }
     };
 }
@@ -29,19 +29,19 @@ macro_rules! fail_fast {
 #[macro_export]
 macro_rules! unsupported_type {
     ($s:literal, $($e:expr),+) => {
-        Err(Error::UnsupportedType(format!($s, $($e),+)))
+        Err($crate::Error::UnsupportedType(format!($s, $($e),+)))
     };
     ($e:expr) => {
-        Err(Error::UnsupportedType($e))
+        Err($crate::Error::UnsupportedType($e))
     };
 }
 
 #[macro_export]
 macro_rules! generic_error {
     ($s:literal, $($e:expr),+) => {
-        Err(Error::GenericError(format!($s, $($e),+)))
+        Err($crate::Error::GenericError(format!($s, $($e),+)))
     };
     ($s:literal) => {
-        Error::GenericError($s.to_string())
+        $crate::Error::GenericError($s.to_string())
     };
 }

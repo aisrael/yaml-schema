@@ -21,6 +21,9 @@ pub fn version() -> String {
     clap::crate_version!().to_string()
 }
 
+// Alias for std::result::Result<T, yaml_schema::Error>
+pub type Result<T> = std::result::Result<T, Error>;
+
 /// A Number is either an integer or a float
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 #[serde(untagged)]

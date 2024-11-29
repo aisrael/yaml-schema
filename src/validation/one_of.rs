@@ -1,12 +1,15 @@
 use super::Validator;
-use crate::{Context, Error, YamlSchema};
+use crate::Context;
+use crate::Error;
+use crate::Result;
+use crate::YamlSchema;
 use log::{debug, error};
 
 pub fn validate_one_of(
     context: &Context,
     schemas: &Vec<YamlSchema>,
     value: &serde_yaml::Value,
-) -> Result<bool, Error> {
+) -> Result<bool> {
     let mut one_of_is_valid = false;
     for schema in schemas {
         debug!(

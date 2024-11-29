@@ -1,6 +1,6 @@
 use std::fmt::{self};
 
-use crate::Error;
+use crate::Result;
 use crate::Validator;
 
 /// A boolean schema matches any boolean value
@@ -30,7 +30,7 @@ impl Validator for BooleanSchema {
         &self,
         context: &crate::validation::Context,
         value: &serde_yaml::Value,
-    ) -> Result<(), Error> {
+    ) -> Result<()> {
         if !value.is_bool() {
             context.add_error(format!("Expected: boolean, found: {:?}", value));
         }

@@ -1,6 +1,10 @@
 /// The schemas defined in the YAML schema language
 use std::fmt;
 
+use crate::Result;
+use crate::Validator;
+use crate::YamlSchema;
+
 mod any_of;
 mod array;
 mod bool_or_typed;
@@ -23,8 +27,6 @@ pub use one_of::OneOfSchema;
 pub use r#const::ConstSchema;
 pub use r#enum::EnumSchema;
 pub use string::StringSchema;
-
-use crate::{Validator, YamlSchema};
 
 #[derive(Debug, PartialEq)]
 pub enum TypedSchema {
@@ -70,11 +72,7 @@ impl fmt::Display for TypedSchema {
 }
 
 impl Validator for TypedSchema {
-    fn validate(
-        &self,
-        context: &crate::Context,
-        value: &serde_yaml::Value,
-    ) -> Result<(), crate::Error> {
+    fn validate(&self, context: &crate::Context, value: &serde_yaml::Value) -> Result<()> {
         match self {
             TypedSchema::Array(a) => a.validate(context, value),
             TypedSchema::Boolean => Ok(()),

@@ -4,6 +4,7 @@ use super::validation::Validator;
 pub use crate::validation::Context;
 pub use crate::validation::ValidationError;
 use crate::Error;
+use crate::Result;
 use crate::YamlSchema;
 
 pub struct Engine<'a> {
@@ -15,7 +16,7 @@ impl<'a> Engine<'a> {
         Engine { schema }
     }
 
-    pub fn evaluate(&self, yaml: &serde_yaml::Value, fail_fast: bool) -> Result<Context, Error> {
+    pub fn evaluate(&self, yaml: &serde_yaml::Value, fail_fast: bool) -> Result<Context> {
         debug!("Engine is running");
         let context = Context::new(fail_fast);
         let result = self.schema.validate(&context, yaml);
@@ -33,7 +34,7 @@ impl<'a> Engine<'a> {
 //         &self,
 //         context: &Context,
 //         value: &serde_yaml::Value,
-//     ) -> Result<(), Error> {
+//     ) -> Result<()> {
 //         if !value.is_bool() {
 //             context.add_error(format!("Expected a boolean, but got: {:?}", value));
 //             fail_fast!(context);
@@ -158,7 +159,7 @@ impl<'a> Engine<'a> {
 //         &self,
 //         context: &Context,
 //         value: &serde_yaml::Value,
-//     ) -> Result<(), Error> {
+//     ) -> Result<()> {
 //         match validate_string(
 //             self.min_length,
 //             self.max_length,
@@ -188,7 +189,7 @@ impl<'a> Engine<'a> {
 //         &self,
 //         context: &Context,
 //         value: &serde_yaml::Value,
-//     ) -> Result<(), Error> {
+//     ) -> Result<()> {
 //         debug!("Validating object: {:?}", value);
 //         match value.as_mapping() {
 //             Some(mapping) => self.validate_object_mapping(context, mapping),
@@ -203,7 +204,7 @@ impl<'a> Engine<'a> {
 //         &self,
 //         context: &Context,
 //         mapping: &serde_yaml::Mapping,
-//     ) -> Result<(), Error> {
+//     ) -> Result<()> {
 //         for (k, value) in mapping {
 //             let key = match k {
 //                 serde_yaml::Value::String(s) => s.clone(),
@@ -299,7 +300,7 @@ impl<'a> Engine<'a> {
 //         &self,
 //         context: &Context,
 //         value: &serde_yaml::Value,
-//     ) -> Result<(), Error> {
+//     ) -> Result<()> {
 //         if !value.is_sequence() {
 //             context.add_error(format!("Expected an array, but got: {:?}", value));
 //             fail_fast!(context);
