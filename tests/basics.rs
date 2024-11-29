@@ -9,7 +9,7 @@ use yaml_schema::{Engine, YamlSchema};
 #[derive(Debug, Default, World)]
 pub struct BasicsWorld {
     yaml_schema: YamlSchema,
-    yaml_schema_error: Option<yaml_schema::YamlSchemaError>,
+    yaml_schema_error: Option<yaml_schema::Error>,
     errors: Option<Rc<RefCell<Vec<ValidationError>>>>,
 }
 
@@ -88,15 +88,15 @@ fn the_error_message_should_be(world: &mut BasicsWorld, expected_error_message: 
 async fn it_should_fail_with(world: &mut BasicsWorld, expected_error_message: String) {
     if let Some(yaml_schema_error) = world.yaml_schema_error.as_ref() {
         match yaml_schema_error {
-            yaml_schema::YamlSchemaError::GenericError(actual_error_message) => {
+            yaml_schema::Error::GenericError(actual_error_message) => {
                 debug!("expected_error_message: {:?}", expected_error_message);
                 debug!("actual_error_message: {:?}", actual_error_message);
                 assert_eq!(expected_error_message, *actual_error_message)
             }
-            yaml_schema::YamlSchemaError::NotYetImplemented => {
+            yaml_schema::Error::NotYetImplemented => {
                 assert_eq!(expected_error_message, "a NotYetImplemented error");
             }
-            yaml_schema::YamlSchemaError::UnsupportedType(actual_error_message) => {
+            yaml_schema::Error::UnsupportedType(actual_error_message) => {
                 assert_eq!(expected_error_message, *actual_error_message)
             }
             _ => panic!("Unexpected error: {:?}", yaml_schema_error),

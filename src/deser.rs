@@ -2,15 +2,15 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
 
-use crate::error::YamlSchemaError;
 use crate::schemas::BooleanSchema;
+use crate::Result;
 use crate::{unsupported_type, PropertyNamesValue};
 
 use super::{format_map, format_vec, Number};
 
 /// Instead of From<deser::YamlSchema>
 pub trait Deser<T>: Sized {
-    fn deserialize(&self) -> Result<T, YamlSchemaError>;
+    fn deserialize(&self) -> Result<T>;
 }
 
 /// A YamlSchema is either empty, a boolean, a typed schema, or an enum schema
@@ -124,7 +124,7 @@ impl YamlSchema {
 }
 
 impl Deser<crate::YamlSchema> for YamlSchema {
-    fn deserialize(&self) -> Result<crate::YamlSchema, YamlSchemaError> {
+    fn deserialize(&self) -> Result<crate::YamlSchema> {
         match &self {
             YamlSchema::Empty => Ok(crate::YamlSchema::Empty),
             YamlSchema::Boolean(b) => Ok(crate::YamlSchema::Boolean(*b)),
@@ -224,7 +224,7 @@ impl fmt::Display for TypedSchema {
 }
 
 impl Deser<crate::YamlSchema> for TypedSchema {
-    fn deserialize(&self) -> Result<crate::YamlSchema, YamlSchemaError> {
+    fn deserialize(&self) -> Result<crate::YamlSchema> {
         match &self.r#type {
             TypeValue::Single(s) => match s {
                 serde_yaml::Value::String(s) => match s.as_str() {

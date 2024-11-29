@@ -6,7 +6,7 @@ pub mod schemas;
 pub mod validation;
 
 pub use engine::Engine;
-pub use error::YamlSchemaError;
+pub use error::Error;
 pub use schemas::{
     ArraySchema, ConstSchema, EnumSchema, IntegerSchema, NumberSchema, ObjectSchema, OneOfSchema,
     StringSchema,
@@ -20,6 +20,9 @@ pub use validation::{Context, Validator};
 pub fn version() -> String {
     clap::crate_version!().to_string()
 }
+
+// Alias for std::result::Result<T, yaml_schema::Error>
+pub type Result<T> = std::result::Result<T, Error>;
 
 /// A Number is either an integer or a float
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
