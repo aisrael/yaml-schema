@@ -2,11 +2,13 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
 
+use crate::format_map;
+use crate::format_vec;
 use crate::schemas::BooleanSchema;
+use crate::unsupported_type;
+use crate::Number;
+use crate::PropertyNamesValue;
 use crate::Result;
-use crate::{unsupported_type, PropertyNamesValue};
-
-use super::{format_map, format_vec, Number};
 
 /// Instead of From<deser::YamlSchema>
 pub trait Deser<T>: Sized {
