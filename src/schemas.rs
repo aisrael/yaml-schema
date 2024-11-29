@@ -74,7 +74,7 @@ impl Validator for TypedSchema {
         &self,
         context: &crate::Context,
         value: &serde_yaml::Value,
-    ) -> Result<(), crate::YamlSchemaError> {
+    ) -> Result<(), crate::Error> {
         match self {
             TypedSchema::Array(a) => a.validate(context, value),
             TypedSchema::Boolean => Ok(()),

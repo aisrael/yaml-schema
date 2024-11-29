@@ -10,14 +10,11 @@ pub use context::Context;
 use log::{debug, error};
 use one_of::validate_one_of;
 
-use crate::{
-    format_serde_yaml_value, ConstSchema, EnumSchema, OneOfSchema, YamlSchema, YamlSchemaError,
-};
+use crate::{format_serde_yaml_value, ConstSchema, EnumSchema, Error, OneOfSchema, YamlSchema};
 
 /// A trait for validating a value against a schema
 pub trait Validator {
-    fn validate(&self, context: &Context, value: &serde_yaml::Value)
-        -> Result<(), YamlSchemaError>;
+    fn validate(&self, context: &Context, value: &serde_yaml::Value) -> Result<(), Error>;
 }
 
 /// A validation error simply contains a path and an error message
@@ -37,11 +34,7 @@ impl Display for ValidationError {
 }
 
 impl Validator for ConstSchema {
-    fn validate(
-        &self,
-        context: &Context,
-        value: &serde_yaml::Value,
-    ) -> Result<(), YamlSchemaError> {
+    fn validate(&self, context: &Context, value: &serde_yaml::Value) -> Result<(), Error> {
         debug!(
             "Validating value: {:?} against const: {:?}",
             value, self.r#const
@@ -59,11 +52,7 @@ impl Validator for ConstSchema {
 }
 
 impl Validator for EnumSchema {
-    fn validate(
-        &self,
-        context: &Context,
-        value: &serde_yaml::Value,
-    ) -> Result<(), YamlSchemaError> {
+    fn validate(&self, context: &Context, value: &serde_yaml::Value) -> Result<(), Error> {
         if !self.r#enum.contains(value) {
             let value_str = format_serde_yaml_value(value);
             let enum_values = self
@@ -80,11 +69,7 @@ impl Validator for EnumSchema {
 }
 
 impl Validator for OneOfSchema {
-    fn validate(
-        &self,
-        context: &Context,
-        value: &serde_yaml::Value,
-    ) -> Result<(), YamlSchemaError> {
+    fn validate(&self, context: &Context, value: &serde_yaml::Value) -> Result<(), Error> {
         let one_of_is_valid = validate_one_of(context, &self.one_of, value)?;
         if !one_of_is_valid {
             error!("OneOf: None of the schemas in `oneOf` matched!");
@@ -96,11 +81,7 @@ impl Validator for OneOfSchema {
 }
 
 impl Validator for YamlSchema {
-    fn validate(
-        &self,
-        context: &Context,
-        value: &serde_yaml::Value,
-    ) -> Result<(), YamlSchemaError> {
+    fn validate(&self, context: &Context, value: &serde_yaml::Value) -> Result<(), Error> {
         debug!("YamlSchema: self: {}", self);
         debug!("YamlSchema: Validating value: {:?}", value);
         match self {

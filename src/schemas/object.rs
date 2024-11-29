@@ -5,7 +5,7 @@ use std::fmt;
 use super::BoolOrTypedSchema;
 use crate::validation::objects::try_validate_value_against_additional_properties;
 use crate::validation::objects::try_validate_value_against_properties;
-use crate::{Context, PropertyNamesValue, Validator, YamlSchema, YamlSchemaError};
+use crate::{Context, Error, PropertyNamesValue, Validator, YamlSchema};
 
 /// An object schema
 #[derive(Debug, Default, PartialEq)]
@@ -27,11 +27,7 @@ impl fmt::Display for ObjectSchema {
 
 impl Validator for ObjectSchema {
     /// Validate the object according to the schema rules
-    fn validate(
-        &self,
-        context: &Context,
-        value: &serde_yaml::Value,
-    ) -> Result<(), YamlSchemaError> {
+    fn validate(&self, context: &Context, value: &serde_yaml::Value) -> Result<(), Error> {
         debug!("Validating object: {:?}", value);
         match value.as_mapping() {
             Some(mapping) => self.validate_object_mapping(context, mapping),
@@ -48,7 +44,7 @@ impl ObjectSchema {
         &self,
         context: &Context,
         mapping: &serde_yaml::Mapping,
-    ) -> Result<(), YamlSchemaError> {
+    ) -> Result<(), Error> {
         for (k, value) in mapping {
             let key = match k {
                 serde_yaml::Value::String(s) => s.clone(),
@@ -76,10 +72,7 @@ impl ObjectSchema {
                 for (pattern, schema) in pattern_properties {
                     // TODO: compile the regex once instead of every time we're evaluating
                     let re = regex::Regex::new(pattern).map_err(|e| {
-                        YamlSchemaError::GenericError(format!(
-                            "Invalid regular expression pattern: {}",
-                            e
-                        ))
+                        Error::GenericError(format!("Invalid regular expression pattern: {}", e))
                     })?;
                     if re.is_match(key.as_str()) {
                         schema.validate(context, value)?;
@@ -89,14 +82,11 @@ impl ObjectSchema {
             // Finally, we check if it matches property_names
             if let Some(property_names) = &self.property_names {
                 let re = regex::Regex::new(&property_names.pattern).map_err(|e| {
-                    YamlSchemaError::GenericError(format!(
-                        "Invalid regular expression pattern: {}",
-                        e
-                    ))
+                    Error::GenericError(format!("Invalid regular expression pattern: {}", e))
                 })?;
                 debug!("Regex for property names: {}", re.as_str());
                 if !re.is_match(key.as_str()) {
-                    return Err(YamlSchemaError::GenericError(format!(
+                    return Err(Error::GenericError(format!(
                         "Property name '{}' does not match pattern specified in `propertyNames`!",
                         key
                     )));
@@ -108,7 +98,7 @@ impl ObjectSchema {
         if let Some(required) = &self.required {
             for required_property in required {
                 if !mapping.contains_key(required_property) {
-                    return Err(YamlSchemaError::GenericError(format!(
+                    return Err(Error::GenericError(format!(
                         "Required property '{}' is missing!",
                         required_property
                     )));
@@ -119,7 +109,7 @@ impl ObjectSchema {
         // Validate minProperties
         if let Some(min_properties) = &self.min_properties {
             if mapping.len() < *min_properties {
-                return Err(YamlSchemaError::GenericError(format!(
+                return Err(Error::GenericError(format!(
                     "Object has too few properties! Minimum is {}!",
                     min_properties
                 )));
@@ -128,7 +118,7 @@ impl ObjectSchema {
         // Validate maxProperties
         if let Some(max_properties) = &self.max_properties {
             if mapping.len() > *max_properties {
-                return Err(YamlSchemaError::GenericError(format!(
+                return Err(Error::GenericError(format!(
                     "Object has too many properties! Maximum is {}!",
                     max_properties
                 )));

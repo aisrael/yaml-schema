@@ -6,7 +6,7 @@ pub mod schemas;
 pub mod validation;
 
 pub use engine::Engine;
-pub use error::YamlSchemaError;
+pub use error::Error;
 pub use schemas::{
     ArraySchema, ConstSchema, EnumSchema, IntegerSchema, NumberSchema, ObjectSchema, OneOfSchema,
     StringSchema,

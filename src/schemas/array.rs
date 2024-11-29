@@ -5,7 +5,7 @@ use super::BoolOrTypedSchema;
 use crate::deser::Deser;
 use crate::format_vec;
 use crate::validation::Validator;
-use crate::{deser_typed_schema, YamlSchema, YamlSchemaError};
+use crate::{deser_typed_schema, Error, YamlSchema};
 
 /// An array schema represents an array
 #[derive(Debug, PartialEq)]
@@ -53,7 +53,7 @@ impl Validator for ArraySchema {
         &self,
         context: &crate::Context,
         value: &serde_yaml::Value,
-    ) -> Result<(), crate::YamlSchemaError> {
+    ) -> Result<(), crate::Error> {
         if !value.is_sequence() {
             context.add_error(format!("Expected an array, but got: {:?}", value));
             fail_fast!(context);

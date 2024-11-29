@@ -1,4 +1,4 @@
-use anyhow::Result;
+use crate::Error;
 
 /// Just trying to isolate the actual validation into a function that doesn't take a context
 pub fn validate_string(
@@ -6,7 +6,7 @@ pub fn validate_string(
     max_length: Option<usize>,
     pattern: Option<&String>,
     value: &serde_yaml::Value,
-) -> Result<Vec<String>> {
+) -> Result<Vec<String>, Error> {
     let mut errors = Vec::new();
     let yaml_string = match value.as_str() {
         Some(s) => s,

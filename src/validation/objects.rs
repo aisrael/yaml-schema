@@ -5,14 +5,14 @@ use std::collections::HashMap;
 use super::Validator;
 use crate::schemas::BoolOrTypedSchema;
 use crate::validation::Context;
-use crate::{YamlSchema, YamlSchemaError};
+use crate::{Error, YamlSchema};
 
 pub fn try_validate_value_against_properties(
     context: &Context,
     key: &String,
     value: &serde_yaml::Value,
     properties: &HashMap<String, YamlSchema>,
-) -> Result<bool, YamlSchemaError> {
+) -> Result<bool, Error> {
     let sub_context = context.append_path(key);
     if let Some(schema) = properties.get(key) {
         debug!("Validating property '{}' with schema: {}", key, schema);
@@ -33,7 +33,7 @@ pub fn try_validate_value_against_additional_properties(
     key: &String,
     value: &serde_yaml::Value,
     additional_properties: &BoolOrTypedSchema,
-) -> Result<bool, YamlSchemaError> {
+) -> Result<bool, Error> {
     let sub_context = context.append_path(key);
 
     match additional_properties {

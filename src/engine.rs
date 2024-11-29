@@ -1,9 +1,9 @@
 use log::debug;
 
 use super::validation::Validator;
-use crate::error::YamlSchemaError;
 pub use crate::validation::Context;
 pub use crate::validation::ValidationError;
+use crate::Error;
 use crate::YamlSchema;
 
 pub struct Engine<'a> {
@@ -15,18 +15,14 @@ impl<'a> Engine<'a> {
         Engine { schema }
     }
 
-    pub fn evaluate(
-        &self,
-        yaml: &serde_yaml::Value,
-        fail_fast: bool,
-    ) -> Result<Context, YamlSchemaError> {
+    pub fn evaluate(&self, yaml: &serde_yaml::Value, fail_fast: bool) -> Result<Context, Error> {
         debug!("Engine is running");
         let context = Context::new(fail_fast);
         let result = self.schema.validate(&context, yaml);
         debug!("Engine: result: {:?}", result);
         debug!("Engine: context.errors: {}", context.errors.borrow().len());
         match result {
-            Ok(()) | Err(YamlSchemaError::FailFast) => Ok(context),
+            Ok(()) | Err(Error::FailFast) => Ok(context),
             Err(e) => Err(e),
         }
     }
@@ -37,7 +33,7 @@ impl<'a> Engine<'a> {
 //         &self,
 //         context: &Context,
 //         value: &serde_yaml::Value,
-//     ) -> Result<(), YamlSchemaError> {
+//     ) -> Result<(), Error> {
 //         if !value.is_bool() {
 //             context.add_error(format!("Expected a boolean, but got: {:?}", value));
 //             fail_fast!(context);
@@ -162,7 +158,7 @@ impl<'a> Engine<'a> {
 //         &self,
 //         context: &Context,
 //         value: &serde_yaml::Value,
-//     ) -> Result<(), YamlSchemaError> {
+//     ) -> Result<(), Error> {
 //         match validate_string(
 //             self.min_length,
 //             self.max_length,
@@ -182,7 +178,7 @@ impl<'a> Engine<'a> {
 //             Err(e) => {
 //                 let s = e.to_string();
 //                 error!("{}", s);
-//                 Err(YamlSchemaError::GenericError(s))
+//                 Err(Error::GenericError(s))
 //             }
 //         }
 //     }
@@ -192,7 +188,7 @@ impl<'a> Engine<'a> {
 //         &self,
 //         context: &Context,
 //         value: &serde_yaml::Value,
-//     ) -> Result<(), YamlSchemaError> {
+//     ) -> Result<(), Error> {
 //         debug!("Validating object: {:?}", value);
 //         match value.as_mapping() {
 //             Some(mapping) => self.validate_object_mapping(context, mapping),
@@ -207,7 +203,7 @@ impl<'a> Engine<'a> {
 //         &self,
 //         context: &Context,
 //         mapping: &serde_yaml::Mapping,
-//     ) -> Result<(), YamlSchemaError> {
+//     ) -> Result<(), Error> {
 //         for (k, value) in mapping {
 //             let key = match k {
 //                 serde_yaml::Value::String(s) => s.clone(),
@@ -237,7 +233,7 @@ impl<'a> Engine<'a> {
 //                 for (pattern, schema) in pattern_properties {
 //                     // TODO: compile the regex once instead of every time we're evaluating
 //                     let re = regex::Regex::new(pattern).map_err(|e| {
-//                         YamlSchemaError::GenericError(format!(
+//                         Error::GenericError(format!(
 //                             "Invalid regular expression pattern: {}",
 //                             e
 //                         ))
@@ -250,14 +246,14 @@ impl<'a> Engine<'a> {
 //             // Finally, we check if it matches property_names
 //             if let Some(property_names) = &self.property_names {
 //                 let re = regex::Regex::new(&property_names.pattern).map_err(|e| {
-//                     YamlSchemaError::GenericError(format!(
+//                     Error::GenericError(format!(
 //                         "Invalid regular expression pattern: {}",
 //                         e
 //                     ))
 //                 })?;
 //                 debug!("Regex for property names: {}", re.as_str());
 //                 if !re.is_match(key.as_str()) {
-//                     return Err(YamlSchemaError::GenericError(format!(
+//                     return Err(Error::GenericError(format!(
 //                         "Property name '{}' does not match pattern specified in `propertyNames`!",
 //                         key
 //                     )));
@@ -269,7 +265,7 @@ impl<'a> Engine<'a> {
 //         if let Some(required) = &self.required {
 //             for required_property in required {
 //                 if !mapping.contains_key(required_property) {
-//                     return Err(YamlSchemaError::GenericError(format!(
+//                     return Err(Error::GenericError(format!(
 //                         "Required property '{}' is missing!",
 //                         required_property
 //                     )));
@@ -280,7 +276,7 @@ impl<'a> Engine<'a> {
 //         // Validate minProperties
 //         if let Some(min_properties) = &self.min_properties {
 //             if mapping.len() < *min_properties {
-//                 return Err(YamlSchemaError::GenericError(format!(
+//                 return Err(Error::GenericError(format!(
 //                     "Object has too few properties! Minimum is {}!",
 //                     min_properties
 //                 )));
@@ -289,7 +285,7 @@ impl<'a> Engine<'a> {
 //         // Validate maxProperties
 //         if let Some(max_properties) = &self.max_properties {
 //             if mapping.len() > *max_properties {
-//                 return Err(YamlSchemaError::GenericError(format!(
+//                 return Err(Error::GenericError(format!(
 //                     "Object has too many properties! Maximum is {}!",
 //                     max_properties
 //                 )));
@@ -303,7 +299,7 @@ impl<'a> Engine<'a> {
 //         &self,
 //         context: &Context,
 //         value: &serde_yaml::Value,
-//     ) -> Result<(), YamlSchemaError> {
+//     ) -> Result<(), Error> {
 //         if !value.is_sequence() {
 //             context.add_error(format!("Expected an array, but got: {:?}", value));
 //             fail_fast!(context);
@@ -323,7 +319,7 @@ impl<'a> Engine<'a> {
 //                 ArrayItemsValue::Boolean(true) => { /* no-op */ }
 //                 ArrayItemsValue::Boolean(false) => {
 //                     if self.prefix_items.is_none() {
-//                         return Err(YamlSchemaError::GenericError(
+//                         return Err(Error::GenericError(
 //                             "Array items are not allowed!".to_string(),
 //                         ));
 //                     }
@@ -337,7 +333,7 @@ impl<'a> Engine<'a> {
 //                 .iter()
 //                 .any(|item| contains.validate(context, item).is_ok())
 //             {
-//                 return Err(YamlSchemaError::GenericError(
+//                 return Err(Error::GenericError(
 //                     "Contains validation failed!".to_string(),
 //                 ));
 //             }
@@ -365,7 +361,7 @@ impl<'a> Engine<'a> {
 //                             break;
 //                         }
 //                         ArrayItemsValue::Boolean(false) => {
-//                             return Err(YamlSchemaError::GenericError(
+//                             return Err(Error::GenericError(
 //                                 "Additional array items are not allowed!".to_string(),
 //                             ));
 //                         }
