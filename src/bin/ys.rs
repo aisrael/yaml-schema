@@ -53,7 +53,7 @@ fn main() {
 }
 
 /// The `ys validate` command
-fn command_validate(opts: Opts) -> Result<i32, anyhow::Error> {
+fn command_validate(opts: Opts) -> Result<i32, eyre::Report> {
     // Currently, we only support a single schema file
     // TODO: Support multiple schema files
     let schema_file = std::fs::File::open(opts.schemas.first().unwrap())?;
