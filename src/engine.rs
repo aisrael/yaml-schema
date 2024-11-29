@@ -1,10 +1,10 @@
 use log::debug;
 
-use super::validation::Validator;
-pub use crate::validation::Context;
-pub use crate::validation::ValidationError;
+use crate::validation::Context;
+use crate::validation::ValidationError;
 use crate::Error;
 use crate::Result;
+use crate::Validator;
 use crate::YamlSchema;
 
 pub struct Engine<'a> {

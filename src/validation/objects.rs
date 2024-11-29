@@ -1,5 +1,5 @@
-use log::debug;
 /// A module to contain object type validation logic
+use log::debug;
 use std::collections::HashMap;
 
 use super::Validator;
