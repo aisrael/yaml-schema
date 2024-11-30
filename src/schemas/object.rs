@@ -132,7 +132,9 @@ impl ObjectSchema {
 
 #[cfg(test)]
 mod tests {
-    use crate::{engine, NumberSchema, StringSchema};
+    use crate::engine;
+    use crate::NumberSchema;
+    use crate::StringSchema;
 
     use super::*;
 

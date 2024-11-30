@@ -1,7 +1,6 @@
 use log::debug;
 
 use crate::validation::Context;
-use crate::validation::ValidationError;
 use crate::Error;
 use crate::Result;
 use crate::Validator;

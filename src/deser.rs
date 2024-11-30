@@ -4,13 +4,15 @@ use std::fmt;
 
 use crate::format_map;
 use crate::format_vec;
+use crate::generic_error;
 use crate::schemas::BooleanSchema;
 use crate::unsupported_type;
+use crate::BoolOrTypedSchema;
 use crate::Number;
 use crate::PropertyNamesValue;
 use crate::Result;
 
-/// Instead of From<deser::YamlSchema>
+/// Instead of From<deser::YamlSchema>, or rather, Into<T>
 pub trait Deser<T>: Sized {
     fn deserialize(&self) -> Result<T>;
 }
@@ -225,17 +227,135 @@ impl fmt::Display for TypedSchema {
     }
 }
 
+impl Deser<crate::TypedSchema> for TypedSchema {
+    fn deserialize(&self) -> Result<crate::TypedSchema> {
+        Ok(match &self.r#type {
+            TypeValue::Single(s) => match s {
+                serde_yaml::Value::String(s) => match s.as_str() {
+                    "string" => crate::TypedSchema::String(self.deserialize()?),
+                    "number" => crate::TypedSchema::Number(crate::NumberSchema {
+                        multiple_of: self.multiple_of,
+                        exclusive_maximum: self.exclusive_maximum,
+                        exclusive_minimum: self.exclusive_minimum,
+                        maximum: self.maximum,
+                        minimum: self.minimum,
+                    }),
+                    "array" => crate::TypedSchema::Array(self.deserialize()?),
+                    unknown => unimplemented!("Don't know how to deserialize type: {}", unknown),
+                },
+                serde_yaml::Value::Null => crate::TypedSchema::Null,
+                unsupported => panic!("Unsupported type: {:?}", unsupported),
+            },
+            TypeValue::Array(a) => {
+                unimplemented!("Can't handle multiple types yes: {}", format_vec(a))
+            }
+        })
+    }
+}
+
+impl Deser<crate::ArraySchema> for TypedSchema {
+    fn deserialize(&self) -> Result<crate::ArraySchema> {
+        let items: Option<BoolOrTypedSchema> = self.items.as_ref().map(|i| match i {
+            ArrayItemsValue::Boolean(b) => BoolOrTypedSchema::Boolean(*b),
+            ArrayItemsValue::TypedSchema(t) => {
+                let typed_schema: crate::TypedSchema = t
+                    .deserialize()
+                    .expect("Failed to deserialize array items schema");
+                BoolOrTypedSchema::TypedSchema(Box::new(typed_schema))
+            }
+        });
+        let prefix_items: Option<Vec<Box<crate::YamlSchema>>> =
+            self.prefix_items.as_ref().map(|prefix_items| {
+                prefix_items
+                    .iter()
+                    .map(|y: &crate::deser::YamlSchema| Box::new(y.deserialize().unwrap()))
+                    .collect()
+            });
+        let contains: Option<Box<crate::YamlSchema>> = self
+            .contains
+            .as_ref()
+            .map(|c| Box::new(c.deserialize().unwrap()));
+        Ok(crate::ArraySchema {
+            items,
+            prefix_items,
+            contains,
+        })
+    }
+}
+
+impl Deser<crate::StringSchema> for TypedSchema {
+    fn deserialize(&self) -> Result<crate::StringSchema> {
+        let pattern = match &self.pattern {
+            None => None,
+            Some(p) => {
+                if let Ok(re) = regex::Regex::new(p) {
+                    Some(re)
+                } else {
+                    return generic_error!("Invalid regular expression pattern: {}", p);
+                }
+            }
+        };
+        Ok(crate::StringSchema {
+            min_length: self.min_length,
+            max_length: self.max_length,
+            pattern,
+        })
+    }
+}
+
+impl Deser<crate::ObjectSchema> for TypedSchema {
+    fn deserialize(&self) -> Result<crate::ObjectSchema> {
+        let properties = self.properties.as_ref().map(|p| {
+            p.iter()
+                .map(|(k, v)| (k.clone(), v.deserialize().unwrap()))
+                .collect()
+        });
+        Ok(crate::ObjectSchema {
+            properties,
+            required: self.required.clone(),
+            additional_properties: self.additional_properties.as_ref().map(|a| match a {
+                AdditionalProperties::Boolean(b) => crate::schemas::BoolOrTypedSchema::Boolean(*b),
+                AdditionalProperties::Type { r#type } => match r#type {
+                    TypeValue::Single(s) => {
+                        let yaml_schema = YamlSchema::TypedSchema(Box::new(TypedSchema {
+                            r#type: TypeValue::Single(s.clone()),
+                            ..Default::default()
+                        }));
+                        let schema = match yaml_schema.deserialize() {
+                            Ok(y) => y.into(),
+                            Err(e) => panic!("Error: {}", e),
+                        };
+                        crate::schemas::BoolOrTypedSchema::TypedSchema(Box::new(schema))
+                    }
+                    TypeValue::Array(a) => {
+                        panic!("Can't handle multiple types yet: {}", format_vec(a))
+                    }
+                },
+            }),
+            pattern_properties: self.pattern_properties.as_ref().map(|p| {
+                p.iter()
+                    .map(|(k, v)| (k.clone(), v.deserialize().unwrap()))
+                    .collect()
+            }),
+            property_names: self.property_names.clone(),
+            min_properties: self.min_properties,
+            max_properties: self.max_properties,
+        })
+    }
+}
+
 impl Deser<crate::YamlSchema> for TypedSchema {
     fn deserialize(&self) -> Result<crate::YamlSchema> {
         match &self.r#type {
             TypeValue::Single(s) => match s {
                 serde_yaml::Value::String(s) => match s.as_str() {
                     "boolean" => Ok(crate::YamlSchema::BooleanSchema(BooleanSchema {})),
-                    "string" => Ok(crate::YamlSchema::String(crate::schemas::StringSchema {
-                        min_length: self.min_length,
-                        max_length: self.max_length,
-                        pattern: self.pattern.clone(),
-                    })),
+                    "string" => {
+                        let string_schema: crate::StringSchema = self
+                            .deserialize()
+                            .map_err(|_| generic_error!("Failed to deserialize string schema"))?;
+                        Ok(crate::YamlSchema::String(string_schema))
+                    }
                     "integer" => Ok(crate::YamlSchema::Integer(crate::schemas::IntegerSchema {
                         multiple_of: self.multiple_of,
                         exclusive_maximum: self.exclusive_maximum,
@@ -250,51 +370,8 @@ impl Deser<crate::YamlSchema> for TypedSchema {
                         maximum: self.maximum,
                         minimum: self.minimum,
                     })),
-                    "array" => Ok(crate::YamlSchema::Array(crate::schemas::ArraySchema::from(
-                        self,
-                    ))),
-                    "object" => Ok(crate::YamlSchema::Object(crate::schemas::ObjectSchema {
-                        properties: self.properties.as_ref().map(|p| {
-                            p.iter()
-                                .map(|(k, v)| (k.clone(), v.deserialize().unwrap()))
-                                .collect()
-                        }),
-                        required: self.required.clone(),
-                        additional_properties: self.additional_properties.as_ref().map(
-                            |a| match a {
-                                AdditionalProperties::Boolean(b) => {
-                                    crate::schemas::BoolOrTypedSchema::Boolean(*b)
-                                }
-                                AdditionalProperties::Type { r#type } => match r#type {
-                                    TypeValue::Single(s) => {
-                                        let yaml_schema =
-                                            YamlSchema::TypedSchema(Box::new(TypedSchema {
-                                                r#type: TypeValue::Single(s.clone()),
-                                                ..Default::default()
-                                            }));
-                                        let schema = match yaml_schema.deserialize() {
-                                            Ok(y) => y.into(),
-                                            Err(e) => panic!("Error: {}", e),
-                                        };
-                                        crate::schemas::BoolOrTypedSchema::TypedSchema(Box::new(
-                                            schema,
-                                        ))
-                                    }
-                                    TypeValue::Array(a) => {
-                                        panic!("Can't handle multiple types yet: {}", format_vec(a))
-                                    }
-                                },
-                            },
-                        ),
-                        pattern_properties: self.pattern_properties.as_ref().map(|p| {
-                            p.iter()
-                                .map(|(k, v)| (k.clone(), v.deserialize().unwrap()))
-                                .collect()
-                        }),
-                        property_names: self.property_names.clone(),
-                        min_properties: self.min_properties,
-                        max_properties: self.max_properties,
-                    })),
+                    "array" => Ok(crate::YamlSchema::Array(self.deserialize()?)),
+                    "object" => Ok(crate::YamlSchema::Object(self.deserialize()?)),
                     unknown => unsupported_type!("Unrecognized type '{}'!", unknown),
                 },
                 serde_yaml::Value::Null => Ok(crate::YamlSchema::TypeNull),
@@ -564,7 +641,7 @@ mod tests {
     }
 
     #[test]
-    fn test_type_null_deserialization() {
+    fn test_deserialize_type_null() {
         let yaml = "
         type: null
         ";
@@ -572,5 +649,34 @@ mod tests {
         println!("{}", schema);
         let yaml_schema = schema.deserialize().unwrap();
         println!("{}", yaml_schema);
+    }
+
+    #[test]
+    fn test_typed_schema_can_deserialize_to_string_schema() {
+        let typed_schema: TypedSchema = serde_yaml::from_str(
+            r#"
+            type: string
+        "#,
+        )
+        .unwrap();
+        let string_schema: crate::StringSchema = typed_schema.deserialize().unwrap();
+        println!("{}", string_schema);
+    }
+
+    #[test]
+    fn test_typed_schema_can_deserialize_to_object_schema() {
+        let typed_schema: TypedSchema = serde_yaml::from_str(
+            r#"
+            type: object
+            properties:
+                foo:
+                    type: string
+                bar:
+                    type: number
+        "#,
+        )
+        .unwrap();
+        let object_schema: crate::ObjectSchema = typed_schema.deserialize().unwrap();
+        println!("{}", object_schema);
     }
 }

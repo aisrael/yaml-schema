@@ -3,7 +3,7 @@ use log::{debug, error};
 use std::cell::RefCell;
 use std::rc::Rc;
 use yaml_schema::deser::{self, Deser};
-use yaml_schema::engine::ValidationError;
+use yaml_schema::validation::ValidationError;
 use yaml_schema::{Engine, YamlSchema};
 
 #[derive(Debug, Default, World)]

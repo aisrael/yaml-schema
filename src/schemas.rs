@@ -33,6 +33,7 @@ pub enum TypedSchema {
     Array(ArraySchema),
     Boolean,
     Null,
+    Integer(IntegerSchema),
     Number(NumberSchema),
     Object(ObjectSchema),
     String(StringSchema),
@@ -64,6 +65,7 @@ impl fmt::Display for TypedSchema {
             TypedSchema::Array(a) => write!(f, "{}", a),
             TypedSchema::Boolean => write!(f, "type: boolean"),
             TypedSchema::Null => write!(f, "type: null"),
+            TypedSchema::Integer(i) => write!(f, "{}", i),
             TypedSchema::Number(n) => write!(f, "{}", n),
             TypedSchema::Object(o) => write!(f, "{}", o),
             TypedSchema::String(s) => write!(f, "{}", s),
@@ -82,6 +84,7 @@ impl Validator for TypedSchema {
                 }
                 Ok(())
             }
+            TypedSchema::Integer(i) => i.validate(context, value),
             TypedSchema::Number(n) => n.validate(context, value),
             TypedSchema::Object(o) => o.validate(context, value),
             TypedSchema::String(s) => s.validate(context, value),

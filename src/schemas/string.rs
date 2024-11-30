@@ -1,14 +1,31 @@
+use regex::Regex;
 use std::fmt;
 
 use crate::Result;
 use crate::{validation::strings::validate_string, Context, Validator};
 
 /// A string schema
-#[derive(Debug, PartialEq, Default)]
+#[derive(Debug, Default)]
 pub struct StringSchema {
     pub min_length: Option<usize>,
     pub max_length: Option<usize>,
-    pub pattern: Option<String>,
+    pub pattern: Option<Regex>,
+}
+
+impl PartialEq for StringSchema {
+    fn eq(&self, other: &Self) -> bool {
+        self.min_length == other.min_length
+            && self.max_length == other.max_length
+            && are_patterns_equal(&self.pattern, &other.pattern)
+    }
+}
+
+fn are_patterns_equal(a: &Option<Regex>, b: &Option<Regex>) -> bool {
+    match (a, b) {
+        (Some(a), Some(b)) => a.as_str() == b.as_str(),
+        (None, None) => true,
+        _ => false,
+    }
 }
 
 impl fmt::Display for StringSchema {

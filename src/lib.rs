@@ -107,30 +107,16 @@ impl fmt::Display for YamlSchema {
     }
 }
 
-fn deser_typed_schema(t: &crate::deser::TypedSchema) -> TypedSchema {
-    match &t.r#type {
-        deser::TypeValue::Single(s) => match s {
-            serde_yaml::Value::String(s) => match s.as_str() {
-                "string" => TypedSchema::String(StringSchema {
-                    min_length: t.min_length,
-                    max_length: t.max_length,
-                    pattern: t.pattern.clone(),
-                }),
-                "number" => TypedSchema::Number(NumberSchema {
-                    multiple_of: t.multiple_of,
-                    exclusive_maximum: t.exclusive_maximum,
-                    exclusive_minimum: t.exclusive_minimum,
-                    maximum: t.maximum,
-                    minimum: t.minimum,
-                }),
-                "array" => TypedSchema::Array(ArraySchema::from(t)),
-                unknown => unimplemented!("Don't know how to deserialize type: {}", unknown),
-            },
-            serde_yaml::Value::Null => TypedSchema::Null,
-            unsupported => panic!("Unsupported type: {:?}", unsupported),
-        },
-        deser::TypeValue::Array(a) => {
-            unimplemented!("Can't handle multiple types yes: {}", format_vec(a))
+impl From<TypedSchema> for YamlSchema {
+    fn from(schema: TypedSchema) -> Self {
+        match schema {
+            TypedSchema::Array(array_schema) => YamlSchema::Array(array_schema),
+            TypedSchema::Boolean => YamlSchema::BooleanSchema(BooleanSchema),
+            TypedSchema::Null => YamlSchema::TypeNull,
+            TypedSchema::Integer(integer_schema) => YamlSchema::Integer(integer_schema),
+            TypedSchema::Number(number_schema) => YamlSchema::Number(number_schema),
+            TypedSchema::Object(object_schema) => YamlSchema::Object(object_schema),
+            TypedSchema::String(string_schema) => YamlSchema::String(string_schema),
         }
     }
 }

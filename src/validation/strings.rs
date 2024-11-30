@@ -1,10 +1,12 @@
+use regex::Regex;
+
 use crate::Result;
 
 /// Just trying to isolate the actual validation into a function that doesn't take a context
 pub fn validate_string(
     min_length: Option<usize>,
     max_length: Option<usize>,
-    pattern: Option<&String>,
+    pattern: Option<&Regex>,
     value: &serde_yaml::Value,
 ) -> Result<Vec<String>> {
     let mut errors = Vec::new();
@@ -17,18 +19,20 @@ pub fn validate_string(
     };
     if let Some(min_length) = min_length {
         if yaml_string.len() < min_length {
-            errors.push("String is too short!".to_string());
+            errors.push(format!("String is too short! (min length: {})", min_length));
         }
     }
     if let Some(max_length) = max_length {
         if yaml_string.len() > max_length {
-            errors.push("String is too long!".to_string());
+            errors.push(format!("String is too long! (max length: {})", max_length));
         }
     }
-    if let Some(pattern) = pattern {
-        let re = regex::Regex::new(pattern)?;
-        if !re.is_match(yaml_string) {
-            errors.push("String does not match regex!".to_string());
+    if let Some(regex) = pattern {
+        if !regex.is_match(yaml_string) {
+            errors.push(format!(
+                "String does not match regular expression {}!",
+                regex.as_str()
+            ));
         }
     }
     Ok(errors)
