@@ -313,17 +313,26 @@ impl std::fmt::Display for TypedSchema {
     }
 }
 
-impl Deser<crate::ArraySchema> for TypedSchema {
-    fn deserialize(&self) -> Result<crate::ArraySchema> {
-        let items: Option<BoolOrTypedSchema> = self.items.as_ref().map(|i| match i {
-            ArrayItemsValue::Boolean(b) => BoolOrTypedSchema::Boolean(*b),
+impl Deser<crate::BoolOrTypedSchema> for ArrayItemsValue {
+    fn deserialize(&self) -> Result<crate::BoolOrTypedSchema> {
+        match self {
+            ArrayItemsValue::Boolean(b) => Ok(crate::BoolOrTypedSchema::Boolean(*b)),
             ArrayItemsValue::TypedSchema(t) => {
                 let typed_schema: crate::TypedSchema = t
                     .deserialize()
                     .expect("Failed to deserialize array items schema");
-                BoolOrTypedSchema::TypedSchema(Box::new(typed_schema))
+                Ok(crate::BoolOrTypedSchema::TypedSchema(Box::new(
+                    typed_schema,
+                )))
             }
-        });
+        }
+    }
+}
+
+impl Deser<crate::ArraySchema> for TypedSchema {
+    fn deserialize(&self) -> Result<crate::ArraySchema> {
+        let items: Option<BoolOrTypedSchema> =
+            self.items.as_ref().map(|i| i.deserialize().unwrap());
         let prefix_items: Option<Vec<Box<crate::YamlSchema>>> =
             self.prefix_items.as_ref().map(|prefix_items| {
                 prefix_items
