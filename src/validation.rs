@@ -97,7 +97,7 @@ impl Validator for YamlSchema {
                 }
                 Ok(())
             }
-            YamlSchema::Boolean(boolean) => {
+            YamlSchema::BooleanLiteral(boolean) => {
                 if !*boolean {
                     context.add_error("Schema is `false`!".to_string());
                 }

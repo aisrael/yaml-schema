@@ -1,6 +1,5 @@
 use std::fmt;
 
-use crate::deser;
 use crate::TypedSchema;
 
 #[derive(Debug, PartialEq)]
@@ -14,17 +13,6 @@ impl fmt::Display for BoolOrTypedSchema {
         match self {
             BoolOrTypedSchema::TypedSchema(s) => write!(f, "{}", s),
             BoolOrTypedSchema::Boolean(b) => write!(f, "{}", b),
-        }
-    }
-}
-
-impl From<crate::deser::ArrayItemsValue> for BoolOrTypedSchema {
-    fn from(value: deser::ArrayItemsValue) -> Self {
-        match value {
-            deser::ArrayItemsValue::Boolean(b) => BoolOrTypedSchema::Boolean(b),
-            deser::ArrayItemsValue::TypedSchema(_t) => {
-                unimplemented!()
-            }
         }
     }
 }

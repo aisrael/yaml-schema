@@ -68,22 +68,28 @@ pub struct PropertyNamesValue {
     pub pattern: String,
 }
 
-/// A YamlSchema is either empty, a boolean, a typed schema, or an enum schema
+/// YamlSchema is the core of the validation model
 #[derive(Debug, Default, PartialEq)]
 pub enum YamlSchema {
     #[default]
-    Empty,
-    Boolean(bool),
-    TypeNull,
-    BooleanSchema(BooleanSchema),
-    Const(ConstSchema),
-    Enum(EnumSchema),
-    OneOf(OneOfSchema),
-    String(StringSchema),
-    Integer(IntegerSchema),
-    Number(NumberSchema),
-    Object(ObjectSchema),
-    Array(ArraySchema),
+    Empty, // no value
+    BooleanLiteral(bool),         // `true` or `false`
+    Const(ConstSchema),           // `const`
+    TypeNull,                     // `type: null`
+    Array(ArraySchema),           // `type: array`
+    BooleanSchema(BooleanSchema), // `type: boolean`
+    Integer(IntegerSchema),       // `type: integer`
+    Number(NumberSchema),         // `type: number`
+    Object(ObjectSchema),         // `type: object`
+    String(StringSchema),         // `type: string`
+    Enum(EnumSchema),             // `enum`
+    OneOf(OneOfSchema),           // `oneOf`
+}
+
+impl YamlSchema {
+    pub fn boolean_literal(value: bool) -> YamlSchema {
+        YamlSchema::BooleanLiteral(value)
+    }
 }
 
 impl fmt::Display for YamlSchema {
@@ -91,7 +97,7 @@ impl fmt::Display for YamlSchema {
         match self {
             YamlSchema::Empty => write!(f, "<empty schema>"),
             YamlSchema::TypeNull => write!(f, "type: null"),
-            YamlSchema::Boolean(b) => write!(f, "{}", b),
+            YamlSchema::BooleanLiteral(b) => write!(f, "{}", b),
             YamlSchema::BooleanSchema(b) => write!(f, "{}", b),
             YamlSchema::Const(c) => write!(f, "{}", c),
             YamlSchema::Enum(e) => write!(f, "{}", e),

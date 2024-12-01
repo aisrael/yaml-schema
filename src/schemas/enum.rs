@@ -11,11 +11,3 @@ impl fmt::Display for EnumSchema {
         write!(f, "Enum {:?}", self.r#enum)
     }
 }
-
-impl From<&crate::deser::EnumSchema> for EnumSchema {
-    fn from(e: &crate::deser::EnumSchema) -> Self {
-        Self {
-            r#enum: e.r#enum.clone(),
-        }
-    }
-}

@@ -13,18 +13,6 @@ impl fmt::Display for BooleanSchema {
     }
 }
 
-impl From<&crate::deser::TypedSchema> for BooleanSchema {
-    fn from(t: &crate::deser::TypedSchema) -> Self {
-        if t.r#type
-            == crate::deser::TypeValue::Single(serde_yaml::Value::String("boolean".to_string()))
-        {
-            BooleanSchema {}
-        } else {
-            panic!("Expected type: boolean")
-        }
-    }
-}
-
 impl Validator for BooleanSchema {
     fn validate(
         &self,

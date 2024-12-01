@@ -28,15 +28,16 @@ pub use r#const::ConstSchema;
 pub use r#enum::EnumSchema;
 pub use string::StringSchema;
 
+/// A TypedSchema is a subset of YamlSchema that has a `type:`
 #[derive(Debug, PartialEq)]
 pub enum TypedSchema {
-    Array(ArraySchema),
-    Boolean,
     Null,
-    Integer(IntegerSchema),
-    Number(NumberSchema),
-    Object(ObjectSchema),
-    String(StringSchema),
+    Array(ArraySchema),     // `type: array`
+    Boolean,                // `type: boolean`
+    Integer(IntegerSchema), // `type: integer`
+    Number(NumberSchema),   // `type: number`
+    Object(ObjectSchema),   // `type: object`
+    String(StringSchema),   // `type: string`
 }
 
 impl From<YamlSchema> for TypedSchema {
