@@ -3,12 +3,10 @@ use std::fmt;
 
 use crate::Result;
 use crate::Validator;
-use crate::YamlSchema;
 
 mod any_of;
 mod array;
 mod bool_or_typed;
-mod boolean;
 mod r#const;
 mod r#enum;
 mod integer;
@@ -19,7 +17,6 @@ mod string;
 
 pub use array::ArraySchema;
 pub use bool_or_typed::BoolOrTypedSchema;
-pub use boolean::BooleanSchema;
 pub use integer::IntegerSchema;
 pub use number::NumberSchema;
 pub use object::ObjectSchema;
@@ -33,24 +30,11 @@ pub use string::StringSchema;
 pub enum TypedSchema {
     Null,
     Array(ArraySchema),     // `type: array`
-    Boolean,                // `type: boolean`
+    BooleanSchema,          // `type: boolean`
     Integer(IntegerSchema), // `type: integer`
     Number(NumberSchema),   // `type: number`
     Object(ObjectSchema),   // `type: object`
     String(StringSchema),   // `type: string`
-}
-
-impl From<YamlSchema> for TypedSchema {
-    fn from(schema: YamlSchema) -> Self {
-        match schema {
-            YamlSchema::Array(a) => TypedSchema::Array(a),
-            YamlSchema::BooleanSchema(_b) => TypedSchema::Boolean,
-            YamlSchema::Number(n) => TypedSchema::Number(n),
-            YamlSchema::Object(o) => TypedSchema::Object(o),
-            YamlSchema::String(s) => TypedSchema::String(s),
-            _ => unimplemented!("Can't convert YamlSchema to TypedSchema: {}!", schema),
-        }
-    }
 }
 
 /// A type value is either a string or an array of strings
@@ -64,7 +48,7 @@ impl fmt::Display for TypedSchema {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             TypedSchema::Array(a) => write!(f, "{}", a),
-            TypedSchema::Boolean => write!(f, "type: boolean"),
+            TypedSchema::BooleanSchema => write!(f, "type: boolean"),
             TypedSchema::Null => write!(f, "type: null"),
             TypedSchema::Integer(i) => write!(f, "{}", i),
             TypedSchema::Number(n) => write!(f, "{}", n),
@@ -78,7 +62,7 @@ impl Validator for TypedSchema {
     fn validate(&self, context: &crate::Context, value: &serde_yaml::Value) -> Result<()> {
         match self {
             TypedSchema::Array(a) => a.validate(context, value),
-            TypedSchema::Boolean => Ok(()),
+            TypedSchema::BooleanSchema => Ok(()),
             TypedSchema::Null => {
                 if !value.is_null() {
                     context.add_error(format!("Expected null, but got: {:?}", value));

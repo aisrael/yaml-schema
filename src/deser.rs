@@ -232,7 +232,7 @@ impl Deser<crate::TypedSchema> for TypedSchema {
             TypeValue::Single(s) => match s {
                 serde_yaml::Value::String(s) => match s.as_str() {
                     "array" => crate::TypedSchema::Array(self.deserialize()?),
-                    "boolean" => crate::TypedSchema::Boolean,
+                    "boolean" => crate::TypedSchema::BooleanSchema,
                     "integer" => crate::TypedSchema::Integer(self.into()),
                     "number" => crate::TypedSchema::Number(self.into()),
                     "object" => crate::TypedSchema::Object(self.deserialize()?),

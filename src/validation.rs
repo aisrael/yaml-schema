@@ -49,7 +49,7 @@ impl Validator for YamlSchema {
                 }
                 Ok(())
             }
-            YamlSchema::BooleanSchema(boolean_schema) => boolean_schema.validate(context, value),
+            YamlSchema::BooleanSchema => validate_boolean_schema(context, value),
             YamlSchema::Const(const_schema) => const_schema.validate(context, value),
             YamlSchema::Enum(enum_schema) => enum_schema.validate(context, value),
             YamlSchema::Integer(integer_schema) => integer_schema.validate(context, value),
@@ -60,4 +60,11 @@ impl Validator for YamlSchema {
             YamlSchema::Array(array_schema) => array_schema.validate(context, value),
         }
     }
+}
+
+fn validate_boolean_schema(context: &Context, value: &serde_yaml::Value) -> Result<()> {
+    if !value.is_bool() {
+        context.add_error(format!("Expected: boolean, found: {:?}", value));
+    }
+    Ok(())
 }

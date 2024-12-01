@@ -22,7 +22,6 @@ pub use schemas::StringSchema;
 pub use validation::Context;
 pub use validation::Validator;
 
-use schemas::BooleanSchema;
 use schemas::TypedSchema;
 
 // Returns the library version, which reflects the crate version
@@ -72,17 +71,17 @@ pub struct PropertyNamesValue {
 pub enum YamlSchema {
     #[default]
     Empty, // no value
-    BooleanLiteral(bool),         // `true` or `false`
-    Const(ConstSchema),           // `const`
-    TypeNull,                     // `type: null`
-    Array(ArraySchema),           // `type: array`
-    BooleanSchema(BooleanSchema), // `type: boolean`
-    Integer(IntegerSchema),       // `type: integer`
-    Number(NumberSchema),         // `type: number`
-    Object(ObjectSchema),         // `type: object`
-    String(StringSchema),         // `type: string`
-    Enum(EnumSchema),             // `enum`
-    OneOf(OneOfSchema),           // `oneOf`
+    BooleanLiteral(bool),   // `true` or `false`
+    Const(ConstSchema),     // `const`
+    TypeNull,               // `type: null`
+    Array(ArraySchema),     // `type: array`
+    BooleanSchema,          // `type: boolean`
+    Integer(IntegerSchema), // `type: integer`
+    Number(NumberSchema),   // `type: number`
+    Object(ObjectSchema),   // `type: object`
+    String(StringSchema),   // `type: string`
+    Enum(EnumSchema),       // `enum`
+    OneOf(OneOfSchema),     // `oneOf`
 }
 
 impl YamlSchema {
@@ -97,7 +96,7 @@ impl std::fmt::Display for YamlSchema {
             YamlSchema::Empty => write!(f, "<empty schema>"),
             YamlSchema::TypeNull => write!(f, "type: null"),
             YamlSchema::BooleanLiteral(b) => write!(f, "{}", b),
-            YamlSchema::BooleanSchema(b) => write!(f, "{}", b),
+            YamlSchema::BooleanSchema => write!(f, "type: boolean"),
             YamlSchema::Const(c) => write!(f, "{}", c),
             YamlSchema::Enum(e) => write!(f, "{}", e),
             YamlSchema::Integer(i) => write!(f, "{}", i),
@@ -116,7 +115,7 @@ impl From<TypedSchema> for YamlSchema {
     fn from(schema: TypedSchema) -> Self {
         match schema {
             TypedSchema::Array(array_schema) => YamlSchema::Array(array_schema),
-            TypedSchema::Boolean => YamlSchema::BooleanSchema(BooleanSchema),
+            TypedSchema::BooleanSchema => YamlSchema::BooleanSchema,
             TypedSchema::Null => YamlSchema::TypeNull,
             TypedSchema::Integer(integer_schema) => YamlSchema::Integer(integer_schema),
             TypedSchema::Number(number_schema) => YamlSchema::Number(number_schema),
