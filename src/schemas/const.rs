@@ -1,5 +1,4 @@
 use log::debug;
-use std::fmt;
 
 use super::Validator;
 use crate::Context;
@@ -11,8 +10,8 @@ pub struct ConstSchema {
     pub r#const: serde_yaml::Value,
 }
 
-impl fmt::Display for ConstSchema {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl std::fmt::Display for ConstSchema {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Const {:?}", self.r#const)
     }
 }

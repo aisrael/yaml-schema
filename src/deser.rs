@@ -2,7 +2,6 @@
 /// It declares and uses an intermediate `deser::YamlSchema` model
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::fmt;
 
 use crate::format_map;
 use crate::format_vec;
@@ -86,8 +85,8 @@ pub enum ArrayItemsValue {
     Boolean(bool),
 }
 
-impl fmt::Display for YamlSchema {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl std::fmt::Display for YamlSchema {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             YamlSchema::Empty => write!(f, "<empty schema>"),
             YamlSchema::Boolean(b) => write!(f, "{}", b),
@@ -258,8 +257,8 @@ impl Deser<crate::TypedSchema> for TypedSchema {
     }
 }
 
-impl fmt::Display for TypedSchema {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl std::fmt::Display for TypedSchema {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut fields = Vec::new();
 
         fields.push(format!("type: {}", self.r#type));
@@ -436,8 +435,8 @@ impl ConstSchema {
     }
 }
 
-impl fmt::Display for ConstSchema {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl std::fmt::Display for ConstSchema {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Const {:?}", self.r#const)
     }
 }
@@ -452,14 +451,14 @@ impl EnumSchema {
     }
 }
 
-impl fmt::Display for EnumSchema {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl std::fmt::Display for EnumSchema {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Enum {:?}", self.r#enum)
     }
 }
 
-impl fmt::Display for AdditionalProperties {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl std::fmt::Display for AdditionalProperties {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             AdditionalProperties::Boolean(b) => write!(f, "additionalProperties: {}", b),
             AdditionalProperties::Type { r#type } => write!(f, "additionalProperties: {}", r#type),
@@ -467,8 +466,8 @@ impl fmt::Display for AdditionalProperties {
     }
 }
 
-impl fmt::Display for ArrayItemsValue {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl std::fmt::Display for ArrayItemsValue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             ArrayItemsValue::TypedSchema(s) => write!(f, "{}", s),
             ArrayItemsValue::Boolean(b) => write!(f, "{}", b),
@@ -485,8 +484,8 @@ pub struct OneOfSchema {
     pub one_of: Vec<YamlSchema>,
 }
 
-impl fmt::Display for OneOfSchema {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl std::fmt::Display for OneOfSchema {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "oneOf:{}", format_vec(&self.one_of))
     }
 }
@@ -555,8 +554,8 @@ impl TypeValue {
     }
 }
 
-impl fmt::Display for TypeValue {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl std::fmt::Display for TypeValue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             TypeValue::Single(s) => match s {
                 serde_yaml::Value::String(s) => write!(f, "\"{}\"", s),

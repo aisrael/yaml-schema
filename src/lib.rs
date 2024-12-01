@@ -1,6 +1,5 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::fmt;
 
 pub mod deser;
 pub mod engine;
@@ -54,8 +53,8 @@ impl Number {
     }
 }
 
-impl fmt::Display for Number {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl std::fmt::Display for Number {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Number::Integer(v) => write!(f, "{}", v),
             Number::Float(v) => write!(f, "{}", v),
@@ -92,8 +91,8 @@ impl YamlSchema {
     }
 }
 
-impl fmt::Display for YamlSchema {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl std::fmt::Display for YamlSchema {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             YamlSchema::Empty => write!(f, "<empty schema>"),
             YamlSchema::TypeNull => write!(f, "type: null"),
@@ -138,7 +137,7 @@ impl From<deser::EnumSchema> for EnumSchema {
 /// Formats a map of values as a string, by joining them with commas
 fn format_map<V>(map: &HashMap<String, V>) -> String
 where
-    V: fmt::Display,
+    V: std::fmt::Display,
 {
     let items: Vec<String> = map
         .iter()
@@ -150,7 +149,7 @@ where
 /// Formats a vector of values as a string, by joining them with commas
 fn format_vec<V>(vec: &[V]) -> String
 where
-    V: fmt::Display,
+    V: std::fmt::Display,
 {
     let items: Vec<String> = vec.iter().map(|v| format!("{}", v)).collect();
     format!("[{}]", items.join(", "))

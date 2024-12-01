@@ -1,5 +1,4 @@
 use crate::YamlSchema;
-use std::fmt::Display;
 
 /// AnyOf
 #[derive(Debug)]
@@ -9,7 +8,7 @@ pub struct AnyOfSchema {
 
 impl AnyOfSchema {}
 
-impl Display for AnyOfSchema {
+impl std::fmt::Display for AnyOfSchema {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         for (i, schema) in self.schemas.iter().enumerate() {
             write!(f, "{}", schema)?;

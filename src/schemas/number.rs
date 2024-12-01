@@ -1,5 +1,3 @@
-use std::fmt;
-
 use crate::validation::Context;
 use crate::validation::Validator;
 use crate::Number;
@@ -15,8 +13,8 @@ pub struct NumberSchema {
     pub multiple_of: Option<Number>,
 }
 
-impl fmt::Display for NumberSchema {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl std::fmt::Display for NumberSchema {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Number {:?}", self)
     }
 }

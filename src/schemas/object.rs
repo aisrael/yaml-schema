@@ -1,6 +1,5 @@
 use log::debug;
 use std::collections::HashMap;
-use std::fmt;
 
 use super::BoolOrTypedSchema;
 use crate::validation::objects::try_validate_value_against_additional_properties;
@@ -20,8 +19,8 @@ pub struct ObjectSchema {
     pub max_properties: Option<usize>,
 }
 
-impl fmt::Display for ObjectSchema {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl std::fmt::Display for ObjectSchema {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Object {:?}", self)
     }
 }

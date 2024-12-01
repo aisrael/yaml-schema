@@ -1,5 +1,3 @@
-use std::fmt;
-
 use crate::format_serde_yaml_value;
 use crate::Context;
 use crate::Result;
@@ -11,8 +9,8 @@ pub struct EnumSchema {
     pub r#enum: Vec<serde_yaml::Value>,
 }
 
-impl fmt::Display for EnumSchema {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl std::fmt::Display for EnumSchema {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Enum {:?}", self.r#enum)
     }
 }

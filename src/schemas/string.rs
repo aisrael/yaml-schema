@@ -1,5 +1,4 @@
 use regex::Regex;
-use std::fmt;
 
 use crate::Result;
 use crate::{validation::strings::validate_string, Context, Validator};
@@ -31,8 +30,8 @@ fn are_patterns_equal(a: &Option<Regex>, b: &Option<Regex>) -> bool {
     }
 }
 
-impl fmt::Display for StringSchema {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl std::fmt::Display for StringSchema {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "String {:?}", self)
     }
 }

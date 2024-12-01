@@ -1,5 +1,3 @@
-use std::fmt::{self};
-
 use crate::Result;
 use crate::Validator;
 
@@ -7,8 +5,8 @@ use crate::Validator;
 #[derive(Debug, PartialEq)]
 pub struct BooleanSchema;
 
-impl fmt::Display for BooleanSchema {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl std::fmt::Display for BooleanSchema {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "type: boolean")
     }
 }

@@ -1,6 +1,4 @@
 /// Validation engine for YamlSchema
-use std::fmt::Display;
-
 mod context;
 pub mod objects;
 pub mod one_of;
@@ -27,7 +25,7 @@ pub struct ValidationError {
 }
 
 /// Display this ValidationErrors as "{path}: {error}"
-impl Display for ValidationError {
+impl std::fmt::Display for ValidationError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}: {}", self.path, self.error)
     }
