@@ -20,6 +20,9 @@ impl PartialEq for StringSchema {
     }
 }
 
+/// 'Naive' check to see if two regexes are equal, by comparing their string representations
+/// We do it this way because we can't `impl PartialEq for Regex` and don't want to have to
+/// alias or wrap the `regex::Regex` type
 fn are_patterns_equal(a: &Option<Regex>, b: &Option<Regex>) -> bool {
     match (a, b) {
         (Some(a), Some(b)) => a.as_str() == b.as_str(),

@@ -199,26 +199,59 @@ impl TypedSchema {
     }
 }
 
+// We don't need to implement Deser<crate::IntegerSchema> for TypedSchema
+// because we don't have any failure modes (yet) for this deserialization
+impl From<&TypedSchema> for crate::IntegerSchema {
+    fn from(typed_schema: &TypedSchema) -> Self {
+        Self {
+            multiple_of: typed_schema.multiple_of,
+            exclusive_maximum: typed_schema.exclusive_maximum,
+            exclusive_minimum: typed_schema.exclusive_minimum,
+            maximum: typed_schema.maximum,
+            minimum: typed_schema.minimum,
+        }
+    }
+}
+
+// We don't need to implement Deser<crate::NumberSchema> for TypedSchema
+// because we don't have any failure modes (yet) for this deserialization
+impl From<&TypedSchema> for crate::NumberSchema {
+    fn from(typed_schema: &TypedSchema) -> Self {
+        Self {
+            multiple_of: typed_schema.multiple_of,
+            exclusive_maximum: typed_schema.exclusive_maximum,
+            exclusive_minimum: typed_schema.exclusive_minimum,
+            maximum: typed_schema.maximum,
+            minimum: typed_schema.minimum,
+        }
+    }
+}
+
 impl Deser<crate::TypedSchema> for TypedSchema {
     fn deserialize(&self) -> Result<crate::TypedSchema> {
         Ok(match &self.r#type {
             TypeValue::Single(s) => match s {
                 serde_yaml::Value::String(s) => match s.as_str() {
-                    "string" => crate::TypedSchema::String(self.deserialize()?),
-                    "number" => crate::TypedSchema::Number(crate::NumberSchema {
-                        multiple_of: self.multiple_of,
-                        exclusive_maximum: self.exclusive_maximum,
-                        exclusive_minimum: self.exclusive_minimum,
-                        maximum: self.maximum,
-                        minimum: self.minimum,
-                    }),
                     "array" => crate::TypedSchema::Array(self.deserialize()?),
+                    "boolean" => crate::TypedSchema::Boolean,
+                    "integer" => crate::TypedSchema::Integer(self.into()),
+                    "number" => crate::TypedSchema::Number(self.into()),
+                    "object" => crate::TypedSchema::Object(self.deserialize()?),
+                    "string" => crate::TypedSchema::String(
+                        self.deserialize()
+                            .map_err(|_| generic_error!("Failed to deserialize string schema"))?,
+                    ),
                     unknown => {
-                        unimplemented!("Don't know how to deserialize type: \"{}\"", unknown)
+                        return unsupported_type!("Unrecognized type '{}'!", unknown);
                     }
                 },
                 serde_yaml::Value::Null => crate::TypedSchema::Null,
-                unknown => unimplemented!("Don't know how to deserialize type: {:?}", unknown),
+                unknown => {
+                    return unsupported_type!(
+                        "Don't know how to deserialize a type value of: {:?}",
+                        unknown
+                    )
+                }
             },
             TypeValue::Array(_) => unimplemented!("Array of types not yet supported"),
         })
@@ -372,43 +405,8 @@ impl Deser<crate::ObjectSchema> for TypedSchema {
 
 impl Deser<crate::YamlSchema> for TypedSchema {
     fn deserialize(&self) -> Result<crate::YamlSchema> {
-        match &self.r#type {
-            TypeValue::Single(s) => match s {
-                serde_yaml::Value::String(s) => match s.as_str() {
-                    "boolean" => Ok(crate::YamlSchema::BooleanSchema(
-                        crate::schemas::BooleanSchema,
-                    )),
-                    "string" => {
-                        let string_schema: crate::StringSchema = self
-                            .deserialize()
-                            .map_err(|_| generic_error!("Failed to deserialize string schema"))?;
-                        Ok(crate::YamlSchema::String(string_schema))
-                    }
-                    "integer" => Ok(crate::YamlSchema::Integer(crate::schemas::IntegerSchema {
-                        multiple_of: self.multiple_of,
-                        exclusive_maximum: self.exclusive_maximum,
-                        exclusive_minimum: self.exclusive_minimum,
-                        maximum: self.maximum,
-                        minimum: self.minimum,
-                    })),
-                    "number" => Ok(crate::YamlSchema::Number(crate::schemas::NumberSchema {
-                        multiple_of: self.multiple_of,
-                        exclusive_maximum: self.exclusive_maximum,
-                        exclusive_minimum: self.exclusive_minimum,
-                        maximum: self.maximum,
-                        minimum: self.minimum,
-                    })),
-                    "array" => Ok(crate::YamlSchema::Array(self.deserialize()?)),
-                    "object" => Ok(crate::YamlSchema::Object(self.deserialize()?)),
-                    unknown => unsupported_type!("Unrecognized type '{}'!", unknown),
-                },
-                serde_yaml::Value::Null => Ok(crate::YamlSchema::TypeNull),
-                unsupported => panic!("Unsupported type: {:?}", unsupported),
-            },
-            TypeValue::Array(a) => {
-                unimplemented!("Can't handle multiple types yes: {}", format_vec(a))
-            }
-        }
+        let typed_schema: crate::TypedSchema = self.deserialize()?;
+        Ok(typed_schema.into())
     }
 }
 
