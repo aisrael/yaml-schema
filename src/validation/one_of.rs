@@ -6,6 +6,18 @@ use crate::Error;
 use crate::Result;
 use crate::YamlSchema;
 
+impl Validator for crate::schemas::OneOfSchema {
+    fn validate(&self, context: &Context, value: &serde_yaml::Value) -> Result<()> {
+        let one_of_is_valid = validate_one_of(context, &self.one_of, value)?;
+        if !one_of_is_valid {
+            error!("OneOf: None of the schemas in `oneOf` matched!");
+            context.add_error("None of the schemas in `oneOf` matched!");
+            fail_fast!(context);
+        }
+        Ok(())
+    }
+}
+
 pub fn validate_one_of(
     context: &Context,
     schemas: &Vec<YamlSchema>,
