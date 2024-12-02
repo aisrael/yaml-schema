@@ -1,6 +1,7 @@
 /// The deser module contains code to "deserialize" a YamlSchema validation model from YAML
 /// It declares and uses an intermediate `deser::YamlSchema` model
 use serde::{Deserialize, Serialize};
+use serde_yaml::Value;
 use std::collections::HashMap;
 
 use crate::format_map;
@@ -36,7 +37,7 @@ pub enum YamlSchema {
 #[derive(Debug, Default, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct TypedSchema {
-    pub r#type: TypeValue,
+    pub r#type: Value,
     // number
     pub minimum: Option<Number>,
     pub maximum: Option<Number>,
@@ -75,7 +76,7 @@ pub struct EnumSchema {
 #[serde(untagged)]
 pub enum AdditionalProperties {
     Boolean(bool),
-    Type { r#type: TypeValue },
+    Type { r#type: serde_yaml::Value },
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
@@ -173,28 +174,28 @@ impl Deser<crate::YamlSchema> for YamlSchema {
 impl TypedSchema {
     pub fn null() -> TypedSchema {
         TypedSchema {
-            r#type: TypeValue::null(),
+            r#type: serde_yaml::Value::Null,
             ..Default::default()
         }
     }
 
     pub fn string() -> TypedSchema {
         TypedSchema {
-            r#type: TypeValue::string(),
+            r#type: serde_yaml::Value::String("string".to_string()),
             ..Default::default()
         }
     }
 
     pub fn number() -> TypedSchema {
         TypedSchema {
-            r#type: TypeValue::number(),
+            r#type: serde_yaml::Value::String("number".to_string()),
             ..Default::default()
         }
     }
 
     pub fn object(properties: HashMap<String, YamlSchema>) -> TypedSchema {
         TypedSchema {
-            r#type: TypeValue::object(),
+            r#type: serde_yaml::Value::String("object".to_string()),
             properties: Some(properties),
             ..Default::default()
         }
@@ -232,19 +233,17 @@ impl From<&TypedSchema> for crate::NumberSchema {
 impl Deser<crate::BoolOrTypedSchema> for TypedSchema {
     fn deserialize(&self) -> Result<crate::BoolOrTypedSchema> {
         Ok(match &self.r#type {
-            TypeValue::Single(s) => match s {
-                serde_yaml::Value::Null => crate::BoolOrTypedSchema::Boolean(false),
-                serde_yaml::Value::String(s) => {
-                    let typed_schema = self.deserialize_by_type_string(s.as_str())?;
-                    crate::BoolOrTypedSchema::TypedSchema(Box::new(typed_schema))
-                }
-                unknown => {
-                    return unsupported_type!(
-                        "Don't know how to deserialize a type value of: {:?}",
-                        unknown
-                    )
-                }
-            },
+            serde_yaml::Value::Null => crate::BoolOrTypedSchema::Boolean(false),
+            serde_yaml::Value::String(s) => {
+                let typed_schema = self.deserialize_by_type_string(s.as_str())?;
+                crate::BoolOrTypedSchema::TypedSchema(Box::new(typed_schema))
+            }
+            unknown => {
+                return unsupported_type!(
+                    "Don't know how to deserialize a type value of: {:?}",
+                    unknown
+                )
+            }
         })
     }
 }
@@ -252,16 +251,14 @@ impl Deser<crate::BoolOrTypedSchema> for TypedSchema {
 impl Deser<crate::TypedSchema> for TypedSchema {
     fn deserialize(&self) -> Result<crate::TypedSchema> {
         Ok(match &self.r#type {
-            TypeValue::Single(s) => match s {
-                serde_yaml::Value::Null => crate::TypedSchema::Null,
-                serde_yaml::Value::String(s) => self.deserialize_by_type_string(s.as_str())?,
-                unknown => {
-                    return unsupported_type!(
-                        "Don't know how to deserialize a type value of: {:?}",
-                        unknown
-                    )
-                }
-            },
+            serde_yaml::Value::Null => crate::TypedSchema::Null,
+            serde_yaml::Value::String(s) => self.deserialize_by_type_string(s.as_str())?,
+            unknown => {
+                return unsupported_type!(
+                    "Don't know how to deserialize a type value of: {:?}",
+                    unknown
+                )
+            }
         })
     }
 }
@@ -286,7 +283,7 @@ impl std::fmt::Display for TypedSchema {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut fields = Vec::new();
 
-        fields.push(format!("type: {}", self.r#type));
+        fields.push(format!("type: {:?}", self.r#type));
 
         if let Some(min) = &self.minimum {
             fields.push(format!("minimum: {}", min));
@@ -402,12 +399,10 @@ impl Deser<crate::ObjectSchema> for TypedSchema {
             required: self.required.clone(),
             additional_properties: self.additional_properties.as_ref().map(|a| match a {
                 AdditionalProperties::Boolean(b) => crate::schemas::BoolOrTypedSchema::Boolean(*b),
-                AdditionalProperties::Type { r#type } => match r#type {
-                    TypeValue::Single(s) => {
-                        let typed_schema = crate::TypedSchema::for_yaml_value(s).unwrap();
-                        crate::schemas::BoolOrTypedSchema::TypedSchema(Box::new(typed_schema))
-                    }
-                },
+                AdditionalProperties::Type { r#type } => {
+                    let typed_schema = crate::TypedSchema::for_yaml_value(r#type).unwrap();
+                    crate::schemas::BoolOrTypedSchema::TypedSchema(Box::new(typed_schema))
+                }
             }),
             pattern_properties: self.pattern_properties.as_ref().map(|p| {
                 p.iter()
@@ -473,7 +468,9 @@ impl std::fmt::Display for AdditionalProperties {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             AdditionalProperties::Boolean(b) => write!(f, "additionalProperties: {}", b),
-            AdditionalProperties::Type { r#type } => write!(f, "additionalProperties: {}", r#type),
+            AdditionalProperties::Type { r#type } => {
+                write!(f, "additionalProperties: {:?}", r#type)
+            }
         }
     }
 }
@@ -499,56 +496,6 @@ pub struct OneOfSchema {
 impl std::fmt::Display for OneOfSchema {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "oneOf:{}", format_vec(&self.one_of))
-    }
-}
-
-/// A type value is either a string or an array of strings
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
-#[serde(untagged)]
-pub enum TypeValue {
-    Single(serde_yaml::Value),
-}
-
-impl TypeValue {
-    pub fn null() -> TypeValue {
-        TypeValue::Single(serde_yaml::Value::Null)
-    }
-
-    pub fn from_string<V>(value: V) -> TypeValue
-    where
-        V: Into<String>,
-    {
-        TypeValue::Single(serde_yaml::Value::String(value.into()))
-    }
-
-    pub fn number() -> TypeValue {
-        Self::from_string("number")
-    }
-
-    pub fn object() -> TypeValue {
-        Self::from_string("object")
-    }
-
-    pub fn string() -> TypeValue {
-        Self::from_string("string")
-    }
-}
-
-impl std::fmt::Display for TypeValue {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            TypeValue::Single(s) => match s {
-                serde_yaml::Value::String(s) => write!(f, "\"{}\"", s),
-                serde_yaml::Value::Null => write!(f, "null"),
-                _ => write!(f, "{:?}", s),
-            },
-        }
-    }
-}
-
-impl Default for TypeValue {
-    fn default() -> Self {
-        TypeValue::object()
     }
 }
 
@@ -600,7 +547,7 @@ mod tests {
         let schema: YamlSchema = serde_yaml::from_str("type: null").unwrap();
         match schema {
             YamlSchema::TypedSchema(s) => {
-                assert_eq!(s.r#type, TypeValue::null());
+                assert_eq!(s.r#type, serde_yaml::Value::Null);
             }
             _ => panic!("Expected a TypedSchema"),
         }
