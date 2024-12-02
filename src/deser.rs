@@ -162,7 +162,10 @@ impl Deser<crate::YamlSchema> for YamlSchema {
             YamlSchema::Const(c) => Ok(crate::YamlSchema::Const(c.into())),
             YamlSchema::Enum(e) => Ok(crate::YamlSchema::Enum(e.into())),
             YamlSchema::OneOf(o) => Ok(crate::YamlSchema::OneOf(o.into())),
-            YamlSchema::TypedSchema(t) => (*t).deserialize(),
+            YamlSchema::TypedSchema(t) => {
+                let typed_schema: crate::TypedSchema = t.deserialize()?;
+                Ok(typed_schema.into())
+            }
         }
     }
 }
@@ -408,13 +411,6 @@ impl Deser<crate::ObjectSchema> for TypedSchema {
             min_properties: self.min_properties,
             max_properties: self.max_properties,
         })
-    }
-}
-
-impl Deser<crate::YamlSchema> for TypedSchema {
-    fn deserialize(&self) -> Result<crate::YamlSchema> {
-        let typed_schema: crate::TypedSchema = self.deserialize()?;
-        Ok(typed_schema.into())
     }
 }
 
