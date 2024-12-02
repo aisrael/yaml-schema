@@ -229,6 +229,27 @@ impl From<&TypedSchema> for crate::NumberSchema {
     }
 }
 
+impl Deser<crate::BoolOrTypedSchema> for TypedSchema {
+    fn deserialize(&self) -> Result<crate::BoolOrTypedSchema> {
+        Ok(match &self.r#type {
+            TypeValue::Single(s) => match s {
+                serde_yaml::Value::Null => crate::BoolOrTypedSchema::Boolean(false),
+                serde_yaml::Value::String(s) => {
+                    let typed_schema = self.deserialize_by_type_string(s.as_str())?;
+                    crate::BoolOrTypedSchema::TypedSchema(Box::new(typed_schema))
+                },
+                unknown => {
+                    return unsupported_type!(
+                        "Don't know how to deserialize a type value of: {:?}",
+                        unknown
+                    )
+                }
+            },
+            TypeValue::Array(_) => unimplemented!("Array of types not yet supported"),
+        })
+    }
+}
+
 impl Deser<crate::TypedSchema> for TypedSchema {
     fn deserialize(&self) -> Result<crate::TypedSchema> {
         Ok(match &self.r#type {
@@ -324,12 +345,7 @@ impl Deser<crate::BoolOrTypedSchema> for ArrayItemsValue {
         match self {
             ArrayItemsValue::Boolean(b) => Ok(crate::BoolOrTypedSchema::Boolean(*b)),
             ArrayItemsValue::TypedSchema(t) => {
-                let typed_schema: crate::TypedSchema = t
-                    .deserialize()
-                    .expect("Failed to deserialize array items schema");
-                Ok(crate::BoolOrTypedSchema::TypedSchema(Box::new(
-                    typed_schema,
-                )))
+                Ok(t.deserialize()?)
             }
         }
     }
