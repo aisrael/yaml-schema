@@ -389,13 +389,8 @@ impl Deser<crate::ObjectSchema> for TypedSchema {
                 AdditionalProperties::Boolean(b) => crate::schemas::BoolOrTypedSchema::Boolean(*b),
                 AdditionalProperties::Type { r#type } => match r#type {
                     TypeValue::Single(s) => {
-                        let typed_schema = TypedSchema {
-                            r#type: TypeValue::Single(s.clone()),
-                            ..Default::default()
-                        };
-                        crate::schemas::BoolOrTypedSchema::TypedSchema(Box::new(
-                            typed_schema.deserialize().unwrap(),
-                        ))
+                        let typed_schema = crate::TypedSchema::for_yaml_value(s).unwrap();
+                        crate::schemas::BoolOrTypedSchema::TypedSchema(Box::new(typed_schema))
                     }
                     TypeValue::Array(a) => {
                         panic!("Can't handle multiple types yet: {}", format_vec(a))

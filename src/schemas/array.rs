@@ -8,7 +8,7 @@ use crate::YamlSchema;
 use super::BoolOrTypedSchema;
 
 /// An array schema represents an array
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Default, PartialEq)]
 pub struct ArraySchema {
     pub items: Option<BoolOrTypedSchema>,
     pub prefix_items: Option<Vec<Box<YamlSchema>>>,

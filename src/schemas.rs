@@ -44,6 +44,28 @@ pub enum TypeValue {
     Array(Vec<String>),
 }
 
+impl TypedSchema {
+    pub fn for_yaml_value(value: &serde_yaml::Value) -> Result<TypedSchema> {
+        match value {
+            serde_yaml::Value::Null => Ok(TypedSchema::Null),
+            serde_yaml::Value::String(s) => Ok(TypedSchema::for_type_string(s.as_str())?),
+            _ => panic!("Unknown type: {:?}", value),
+        }
+    }
+
+    pub fn for_type_string(r#type: &str) -> Result<TypedSchema> {
+        match r#type {
+            "array" => Ok(TypedSchema::Array(ArraySchema::default())),
+            "boolean" => Ok(TypedSchema::BooleanSchema),
+            "integer" => Ok(TypedSchema::Integer(IntegerSchema::default())),
+            "number" => Ok(TypedSchema::Number(NumberSchema::default())),
+            "object" => Ok(TypedSchema::Object(ObjectSchema::default())),
+            "string" => Ok(TypedSchema::String(StringSchema::default())),
+            _ => panic!("Unknown type: {}", r#type),
+        }
+    }
+}
+
 impl fmt::Display for TypedSchema {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
