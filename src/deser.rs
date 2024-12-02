@@ -1,7 +1,6 @@
 /// The deser module contains code to "deserialize" a YamlSchema validation model from YAML
 /// It declares and uses an intermediate `deser::YamlSchema` model
 use serde::{Deserialize, Serialize};
-use serde_yaml::Value;
 use std::collections::HashMap;
 
 use crate::format_map;
@@ -37,7 +36,7 @@ pub enum YamlSchema {
 #[derive(Debug, Default, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct TypedSchema {
-    pub r#type: Value,
+    pub r#type: serde_yaml::Value,
     // number
     pub minimum: Option<Number>,
     pub maximum: Option<Number>,
