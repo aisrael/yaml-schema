@@ -45,12 +45,6 @@ impl Validator for ArraySchema {
                         typed_schema.validate(context, item)?;
                     }
                 }
-                BoolOrTypedSchema::MultipleTypeNames(types) => {
-                    unimplemented!(
-                        "Array items with multiple types not yet supported: {}",
-                        format_vec(types)
-                    )
-                }
             }
         }
 
@@ -88,12 +82,6 @@ impl Validator for ArraySchema {
                         }
                         BoolOrTypedSchema::TypedSchema(typed_schema) => {
                             typed_schema.validate(context, item)?;
-                        }
-                        BoolOrTypedSchema::MultipleTypeNames(types) => {
-                            unimplemented!(
-                                "Array items with multiple types not yet supported: {}",
-                                format_vec(types)
-                            )
                         }
                     }
                 } else {

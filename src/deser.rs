@@ -245,7 +245,6 @@ impl Deser<crate::BoolOrTypedSchema> for TypedSchema {
                     )
                 }
             },
-            TypeValue::Array(types) => crate::BoolOrTypedSchema::MultipleTypeNames(types.clone()),
         })
     }
 }
@@ -263,7 +262,6 @@ impl Deser<crate::TypedSchema> for TypedSchema {
                     )
                 }
             },
-            TypeValue::Array(_) => unimplemented!("Array of types not yet supported"),
         })
     }
 }
@@ -409,9 +407,6 @@ impl Deser<crate::ObjectSchema> for TypedSchema {
                         let typed_schema = crate::TypedSchema::for_yaml_value(s).unwrap();
                         crate::schemas::BoolOrTypedSchema::TypedSchema(Box::new(typed_schema))
                     }
-                    TypeValue::Array(a) => {
-                        panic!("Can't handle multiple types yet: {}", format_vec(a))
-                    }
                 },
             }),
             pattern_properties: self.pattern_properties.as_ref().map(|p| {
@@ -512,7 +507,6 @@ impl std::fmt::Display for OneOfSchema {
 #[serde(untagged)]
 pub enum TypeValue {
     Single(serde_yaml::Value),
-    Array(Vec<String>),
 }
 
 impl TypeValue {
@@ -538,37 +532,6 @@ impl TypeValue {
     pub fn string() -> TypeValue {
         Self::from_string("string")
     }
-
-    pub fn array<V>(items: Vec<V>) -> TypeValue
-    where
-        V: Into<String>,
-    {
-        let strings: Vec<String> = items.into_iter().map(|v| v.into()).collect();
-        TypeValue::Array(strings)
-    }
-
-    /// Returns this TypeValue as a simple list of allowed typestrings
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use yaml_schema::deser::TypeValue;
-    ///
-    /// let single_type = TypeValue::from_string("string");
-    /// assert_eq!(single_type.as_list_of_allowed_types(), vec!["string".to_string()]);
-    ///
-    /// let multiple_types = TypeValue::Array(vec!["string".to_string(), "number".to_string()]);
-    /// assert_eq!(multiple_types.as_list_of_allowed_types(), vec!["string".to_string(), "number".to_string()]);
-    /// ```
-    pub fn as_list_of_allowed_types(&self) -> Vec<String> {
-        match self {
-            TypeValue::Single(s) => match s {
-                serde_yaml::Value::String(s) => vec![s.clone()],
-                _ => Vec::new(), // if `null`, etc., we return an empty list
-            },
-            TypeValue::Array(v) => v.clone(),
-        }
-    }
 }
 
 impl std::fmt::Display for TypeValue {
@@ -579,7 +542,6 @@ impl std::fmt::Display for TypeValue {
                 serde_yaml::Value::Null => write!(f, "null"),
                 _ => write!(f, "{:?}", s),
             },
-            TypeValue::Array(v) => write!(f, "[{}]", v.join(", ")),
         }
     }
 }
@@ -631,21 +593,6 @@ mod tests {
         let schema: YamlSchema = serde_yaml::from_str("type: string").unwrap();
         let expected = YamlSchema::TypedSchema(Box::new(TypedSchema::string()));
         assert_eq!(expected, schema);
-    }
-
-    #[test]
-    fn test_type_value_as_list_of_allowed_types() {
-        let single_type = TypeValue::string();
-        assert_eq!(
-            single_type.as_list_of_allowed_types(),
-            vec!["string".to_string()]
-        );
-
-        let multiple_types = TypeValue::array(vec!["string", "number"]);
-        assert_eq!(
-            multiple_types.as_list_of_allowed_types(),
-            vec!["string".to_string(), "number".to_string()]
-        );
     }
 
     #[test]

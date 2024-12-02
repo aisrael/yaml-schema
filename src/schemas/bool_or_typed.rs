@@ -1,10 +1,9 @@
-use crate::{format_vec, TypedSchema};
+use crate::TypedSchema;
 
 #[derive(Debug, PartialEq)]
 pub enum BoolOrTypedSchema {
     Boolean(bool),
     TypedSchema(Box<TypedSchema>),
-    MultipleTypeNames(Vec<String>),
 }
 
 impl std::fmt::Display for BoolOrTypedSchema {
@@ -12,7 +11,6 @@ impl std::fmt::Display for BoolOrTypedSchema {
         match self {
             BoolOrTypedSchema::Boolean(b) => write!(f, "{}", b),
             BoolOrTypedSchema::TypedSchema(s) => write!(f, "{}", s),
-            BoolOrTypedSchema::MultipleTypeNames(types) => write!(f, "{}", format_vec(types)),
         }
     }
 }
