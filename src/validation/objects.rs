@@ -2,6 +2,7 @@
 use log::debug;
 use std::collections::HashMap;
 
+use crate::format_vec;
 use crate::schemas::BoolOrTypedSchema;
 use crate::validation::Context;
 use crate::Result;
@@ -49,6 +50,12 @@ pub fn try_validate_value_against_additional_properties(
         // if additional_properties: a schema, then validate against it
         BoolOrTypedSchema::TypedSchema(schema) => {
             schema.validate(&sub_context, value)?;
+        }
+        BoolOrTypedSchema::MultipleTypeNames(types) => {
+            unimplemented!(
+                "Additional properties with multiple types not yet supported: {}",
+                format_vec(types)
+            )
         }
     }
     Ok(true)

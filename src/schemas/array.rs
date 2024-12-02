@@ -34,16 +34,22 @@ impl Validator for ArraySchema {
         // validate array items
         if let Some(items) = &self.items {
             match items {
-                BoolOrTypedSchema::TypedSchema(typed_schema) => {
-                    for item in array {
-                        typed_schema.validate(context, item)?;
-                    }
-                }
                 BoolOrTypedSchema::Boolean(true) => { /* no-op */ }
                 BoolOrTypedSchema::Boolean(false) => {
                     if self.prefix_items.is_none() {
                         context.add_error("Array items are not allowed!".to_string());
                     }
+                }
+                BoolOrTypedSchema::TypedSchema(typed_schema) => {
+                    for item in array {
+                        typed_schema.validate(context, item)?;
+                    }
+                }
+                BoolOrTypedSchema::MultipleTypeNames(types) => {
+                    unimplemented!(
+                        "Array items with multiple types not yet supported: {}",
+                        format_vec(types)
+                    )
                 }
             }
         }
@@ -72,9 +78,6 @@ impl Validator for ArraySchema {
                 } else if let Some(items) = &self.items {
                     // if the index is not within the prefix items, validate against the array items schema
                     match items {
-                        BoolOrTypedSchema::TypedSchema(typed_schema) => {
-                            typed_schema.validate(context, item)?;
-                        }
                         BoolOrTypedSchema::Boolean(true) => {
                             // `items: true` allows any items
                             break;
@@ -82,6 +85,15 @@ impl Validator for ArraySchema {
                         BoolOrTypedSchema::Boolean(false) => {
                             context
                                 .add_error("Additional array items are not allowed!".to_string());
+                        }
+                        BoolOrTypedSchema::TypedSchema(typed_schema) => {
+                            typed_schema.validate(context, item)?;
+                        }
+                        BoolOrTypedSchema::MultipleTypeNames(types) => {
+                            unimplemented!(
+                                "Array items with multiple types not yet supported: {}",
+                                format_vec(types)
+                            )
                         }
                     }
                 } else {

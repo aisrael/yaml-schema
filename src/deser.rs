@@ -237,7 +237,7 @@ impl Deser<crate::BoolOrTypedSchema> for TypedSchema {
                 serde_yaml::Value::String(s) => {
                     let typed_schema = self.deserialize_by_type_string(s.as_str())?;
                     crate::BoolOrTypedSchema::TypedSchema(Box::new(typed_schema))
-                },
+                }
                 unknown => {
                     return unsupported_type!(
                         "Don't know how to deserialize a type value of: {:?}",
@@ -245,7 +245,7 @@ impl Deser<crate::BoolOrTypedSchema> for TypedSchema {
                     )
                 }
             },
-            TypeValue::Array(_) => unimplemented!("Array of types not yet supported"),
+            TypeValue::Array(types) => crate::BoolOrTypedSchema::MultipleTypeNames(types.clone()),
         })
     }
 }
@@ -344,9 +344,7 @@ impl Deser<crate::BoolOrTypedSchema> for ArrayItemsValue {
     fn deserialize(&self) -> Result<crate::BoolOrTypedSchema> {
         match self {
             ArrayItemsValue::Boolean(b) => Ok(crate::BoolOrTypedSchema::Boolean(*b)),
-            ArrayItemsValue::TypedSchema(t) => {
-                Ok(t.deserialize()?)
-            }
+            ArrayItemsValue::TypedSchema(t) => Ok(t.deserialize()?),
         }
     }
 }
