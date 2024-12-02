@@ -233,21 +233,8 @@ impl Deser<crate::TypedSchema> for TypedSchema {
     fn deserialize(&self) -> Result<crate::TypedSchema> {
         Ok(match &self.r#type {
             TypeValue::Single(s) => match s {
-                serde_yaml::Value::String(s) => match s.as_str() {
-                    "array" => crate::TypedSchema::Array(self.deserialize()?),
-                    "boolean" => crate::TypedSchema::BooleanSchema,
-                    "integer" => crate::TypedSchema::Integer(self.into()),
-                    "number" => crate::TypedSchema::Number(self.into()),
-                    "object" => crate::TypedSchema::Object(self.deserialize()?),
-                    "string" => crate::TypedSchema::String(
-                        self.deserialize()
-                            .map_err(|_| generic_error!("Failed to deserialize string schema"))?,
-                    ),
-                    unknown => {
-                        return unsupported_type!("Unrecognized type '{}'!", unknown);
-                    }
-                },
                 serde_yaml::Value::Null => crate::TypedSchema::Null,
+                serde_yaml::Value::String(s) => self.deserialize_by_type_string(s.as_str())?,
                 unknown => {
                     return unsupported_type!(
                         "Don't know how to deserialize a type value of: {:?}",
@@ -257,6 +244,22 @@ impl Deser<crate::TypedSchema> for TypedSchema {
             },
             TypeValue::Array(_) => unimplemented!("Array of types not yet supported"),
         })
+    }
+}
+
+impl TypedSchema {
+    pub fn deserialize_by_type_string(&self, s: &str) -> Result<crate::TypedSchema> {
+        match s {
+            "array" => Ok(crate::TypedSchema::Array(self.deserialize()?)),
+            "boolean" => Ok(crate::TypedSchema::BooleanSchema),
+            "integer" => Ok(crate::TypedSchema::Integer(self.into())),
+            "number" => Ok(crate::TypedSchema::Number(self.into())),
+            "object" => Ok(crate::TypedSchema::Object(self.deserialize()?)),
+            "string" => Ok(crate::TypedSchema::String(self.deserialize()?)),
+            unknown => {
+                unsupported_type!("Unrecognized type '{}'!", unknown)
+            }
+        }
     }
 }
 
