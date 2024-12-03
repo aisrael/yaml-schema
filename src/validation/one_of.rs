@@ -29,7 +29,7 @@ pub fn validate_one_of(
             "OneOf: Validating value: {:?} against schema: {}",
             value, schema
         );
-        let sub_context = Context::new(context.fail_fast);
+        let sub_context = Context::new(true);
         let sub_result = schema.validate(&sub_context, value);
         match sub_result {
             Ok(()) | Err(Error::FailFast) => {

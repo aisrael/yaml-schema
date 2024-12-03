@@ -26,6 +26,7 @@ pub enum YamlSchema {
     Boolean(bool),
     Const(ConstSchema),
     Enum(EnumSchema),
+    AnyOf(AnyOfSchema),
     OneOf(OneOfSchema),
     // Need to put TypedSchema last, because not specifying `type:`
     // is interpreted as `type: null` (None)
@@ -92,6 +93,9 @@ impl std::fmt::Display for YamlSchema {
             YamlSchema::Boolean(b) => write!(f, "{}", b),
             YamlSchema::Const(c) => write!(f, "{}", c),
             YamlSchema::Enum(e) => write!(f, "{}", e),
+            YamlSchema::AnyOf(any_of_schema) => {
+                write!(f, "{}", any_of_schema)
+            }
             YamlSchema::OneOf(one_of_schema) => {
                 write!(f, "{}", one_of_schema)
             }
@@ -143,6 +147,17 @@ impl From<&EnumSchema> for crate::EnumSchema {
     }
 }
 
+impl From<&AnyOfSchema> for crate::AnyOfSchema {
+    fn from(any_of_schema: &AnyOfSchema) -> Self {
+        let any_of: Vec<crate::YamlSchema> = any_of_schema
+            .any_of
+            .iter()
+            .map(|s| s.deserialize().unwrap())
+            .collect();
+        crate::AnyOfSchema { any_of }
+    }
+}
+
 impl From<&OneOfSchema> for crate::OneOfSchema {
     fn from(one_of_schema: &OneOfSchema) -> Self {
         let one_of: Vec<crate::YamlSchema> = one_of_schema
@@ -161,6 +176,7 @@ impl Deser<crate::YamlSchema> for YamlSchema {
             YamlSchema::Boolean(b) => Ok(crate::YamlSchema::BooleanLiteral(*b)),
             YamlSchema::Const(c) => Ok(crate::YamlSchema::Const(c.into())),
             YamlSchema::Enum(e) => Ok(crate::YamlSchema::Enum(e.into())),
+            YamlSchema::AnyOf(a) => Ok(crate::YamlSchema::AnyOf(a.into())),
             YamlSchema::OneOf(o) => Ok(crate::YamlSchema::OneOf(o.into())),
             YamlSchema::TypedSchema(t) => {
                 let typed_schema: crate::TypedSchema = t.deserialize()?;
@@ -483,7 +499,22 @@ impl std::fmt::Display for ArrayItemsValue {
     }
 }
 
-/// The `oneOf` schema is a schema that matches if any of the schemas in the `oneOf` array match.
+/// The `anyOf` schema is a schema that matches if any of the schemas in the `anyOf` array match.
+/// The schemas are tried in order, and the first match is used. If no match is found, an error is added
+/// to the context.
+#[derive(Debug, Default, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct AnyOfSchema {
+    pub any_of: Vec<YamlSchema>,
+}
+
+impl std::fmt::Display for AnyOfSchema {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "anyOf: {}", format_vec(&self.any_of))
+    }
+}
+
+/// The `oneOf` schema is a schema that matches if one, and only one of the schemas in the `oneOf` array match.
 /// The schemas are tried in order, and the first match is used. If no match is found, an error is added
 /// to the context.
 #[derive(Debug, Default, Serialize, Deserialize, PartialEq)]
@@ -494,7 +525,7 @@ pub struct OneOfSchema {
 
 impl std::fmt::Display for OneOfSchema {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "oneOf:{}", format_vec(&self.one_of))
+        write!(f, "oneOf: {}", format_vec(&self.one_of))
     }
 }
 

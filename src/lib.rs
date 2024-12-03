@@ -10,6 +10,7 @@ pub mod validation;
 
 pub use engine::Engine;
 pub use error::Error;
+pub use schemas::AnyOfSchema;
 pub use schemas::ArraySchema;
 pub use schemas::BoolOrTypedSchema;
 pub use schemas::ConstSchema;
@@ -81,6 +82,7 @@ pub enum YamlSchema {
     Object(ObjectSchema),   // `type: object`
     String(StringSchema),   // `type: string`
     Enum(EnumSchema),       // `enum`
+    AnyOf(AnyOfSchema),     // `anyOf`
     OneOf(OneOfSchema),     // `oneOf`
 }
 
@@ -100,6 +102,9 @@ impl std::fmt::Display for YamlSchema {
             YamlSchema::Const(c) => write!(f, "{}", c),
             YamlSchema::Enum(e) => write!(f, "{}", e),
             YamlSchema::Integer(i) => write!(f, "{}", i),
+            YamlSchema::AnyOf(any_of_schema) => {
+                write!(f, "{}", any_of_schema)
+            }
             YamlSchema::OneOf(one_of_schema) => {
                 write!(f, "{}", one_of_schema)
             }

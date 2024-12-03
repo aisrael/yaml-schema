@@ -1,5 +1,31 @@
 Feature: Schema Composition
 
+  Scenario: anyOf ZZZ
+    Given a YAML schema:
+      ```
+      anyOf:
+        - type: string
+          maxLength: 5
+        - type: number
+          minimum: 0
+      ```
+    Then it should accept:
+      ```
+      "short"
+      ```
+    But it should NOT accept:
+      ```
+      "too long"
+      ```
+    And it should accept:
+      ```
+      12
+      ```
+    But it should NOT accept:
+      ```
+      -5
+      ```
+
   Scenario: oneOf
     Given a YAML schema:
       ```
@@ -78,7 +104,7 @@ Feature: Schema Composition
                         - type: null
                         - type: array
                           items:
-                            type: string      
+                            type: string
       ```
     Then it should accept:
       ```
@@ -96,7 +122,7 @@ Feature: Schema Composition
           production:
             reviewers:
               - alice
-              - bob      
+              - bob
       ```
     But it should NOT accept:
       ```

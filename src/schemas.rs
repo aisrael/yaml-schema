@@ -15,6 +15,7 @@ mod object;
 mod one_of;
 mod string;
 
+pub use any_of::AnyOfSchema;
 pub use array::ArraySchema;
 pub use bool_or_typed::BoolOrTypedSchema;
 pub use integer::IntegerSchema;
