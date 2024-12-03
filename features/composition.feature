@@ -1,6 +1,6 @@
 Feature: Schema Composition
 
-  Scenario: anyOf ZZZ
+  Scenario: anyOf
     Given a YAML schema:
       ```
       anyOf:
@@ -150,4 +150,23 @@ Feature: Schema Composition
       ```
       a1b:
         name: John
+      ```
+
+  Scenario: not
+    Given a YAML schema:
+      ```
+      not:
+        type: string
+      ```
+    Then it should accept:
+      ```
+      42
+      ```
+    And it should accept:
+      ```
+      key: value
+      ```
+    But it should NOT accept:
+      ```
+      "I am a string"
       ```

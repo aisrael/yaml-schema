@@ -28,6 +28,7 @@ pub enum YamlSchema {
     Enum(EnumSchema),
     AnyOf(AnyOfSchema),
     OneOf(OneOfSchema),
+    Not(NotSchema),
     // Need to put TypedSchema last, because not specifying `type:`
     // is interpreted as `type: null` (None)
     TypedSchema(Box<TypedSchema>),
@@ -99,6 +100,9 @@ impl std::fmt::Display for YamlSchema {
             YamlSchema::OneOf(one_of_schema) => {
                 write!(f, "{}", one_of_schema)
             }
+            YamlSchema::Not(not_schema) => {
+                write!(f, "{}", not_schema)
+            }
             YamlSchema::TypedSchema(s) => write!(f, "{}", s),
         }
     }
@@ -169,6 +173,14 @@ impl From<&OneOfSchema> for crate::OneOfSchema {
     }
 }
 
+impl Deser<crate::NotSchema> for NotSchema {
+    fn deserialize(&self) -> Result<crate::NotSchema> {
+        Ok(crate::NotSchema {
+            not: Box::new(self.not.deserialize()?),
+        })
+    }
+}
+
 impl Deser<crate::YamlSchema> for YamlSchema {
     fn deserialize(&self) -> Result<crate::YamlSchema> {
         match &self {
@@ -178,6 +190,7 @@ impl Deser<crate::YamlSchema> for YamlSchema {
             YamlSchema::Enum(e) => Ok(crate::YamlSchema::Enum(e.into())),
             YamlSchema::AnyOf(a) => Ok(crate::YamlSchema::AnyOf(a.into())),
             YamlSchema::OneOf(o) => Ok(crate::YamlSchema::OneOf(o.into())),
+            YamlSchema::Not(n) => Ok(crate::YamlSchema::Not(n.deserialize()?)),
             YamlSchema::TypedSchema(t) => {
                 let typed_schema: crate::TypedSchema = t.deserialize()?;
                 Ok(typed_schema.into())
@@ -526,6 +539,19 @@ pub struct OneOfSchema {
 impl std::fmt::Display for OneOfSchema {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "oneOf: {}", format_vec(&self.one_of))
+    }
+}
+
+/// The `not` ` keyword declares that an instance validates if it doesn't validate against the given subschema.
+#[derive(Debug, Default, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct NotSchema {
+    pub not: Box<YamlSchema>,
+}
+
+impl std::fmt::Display for NotSchema {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "not: {}", self.not)
     }
 }
 

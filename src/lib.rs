@@ -16,6 +16,7 @@ pub use schemas::BoolOrTypedSchema;
 pub use schemas::ConstSchema;
 pub use schemas::EnumSchema;
 pub use schemas::IntegerSchema;
+pub use schemas::NotSchema;
 pub use schemas::NumberSchema;
 pub use schemas::ObjectSchema;
 pub use schemas::OneOfSchema;
@@ -84,6 +85,7 @@ pub enum YamlSchema {
     Enum(EnumSchema),       // `enum`
     AnyOf(AnyOfSchema),     // `anyOf`
     OneOf(OneOfSchema),     // `oneOf`
+    Not(NotSchema),         // `not`
 }
 
 impl YamlSchema {
@@ -107,6 +109,9 @@ impl std::fmt::Display for YamlSchema {
             }
             YamlSchema::OneOf(one_of_schema) => {
                 write!(f, "{}", one_of_schema)
+            }
+            YamlSchema::Not(not_schema) => {
+                write!(f, "{}", not_schema)
             }
             YamlSchema::String(s) => write!(f, "{}", s),
             YamlSchema::Number(n) => write!(f, "{}", n),

@@ -1,6 +1,30 @@
+use crate::Context;
+use crate::Result;
+use crate::StringSchema;
 use regex::Regex;
 
-use crate::Result;
+use super::Validator;
+
+impl Validator for StringSchema {
+    fn validate(&self, context: &Context, value: &serde_yaml::Value) -> Result<()> {
+        match validate_string(
+            self.min_length,
+            self.max_length,
+            self.pattern.as_ref(),
+            value,
+        ) {
+            Ok(errors) => {
+                if !errors.is_empty() {
+                    for error in errors {
+                        context.add_error(error);
+                    }
+                }
+                Ok(())
+            }
+            Err(e) => generic_error!("{}", e),
+        }
+    }
+}
 
 /// Just trying to isolate the actual validation into a function that doesn't take a context
 pub fn validate_string(

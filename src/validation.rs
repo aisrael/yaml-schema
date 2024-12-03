@@ -1,9 +1,10 @@
 pub mod any_of;
 /// Validation engine for YamlSchema
 mod context;
-pub mod objects;
-pub mod one_of;
-pub mod strings;
+mod not;
+mod objects;
+mod one_of;
+mod strings;
 
 pub use context::Context;
 use log::debug;
@@ -54,12 +55,13 @@ impl Validator for YamlSchema {
             YamlSchema::Const(const_schema) => const_schema.validate(context, value),
             YamlSchema::Enum(enum_schema) => enum_schema.validate(context, value),
             YamlSchema::Integer(integer_schema) => integer_schema.validate(context, value),
-            YamlSchema::Object(object_schema) => object_schema.validate(context, value),
-            YamlSchema::AnyOf(any_of_schema) => any_of_schema.validate(context, value),
-            YamlSchema::OneOf(one_of_schema) => one_of_schema.validate(context, value),
             YamlSchema::String(string_schema) => string_schema.validate(context, value),
             YamlSchema::Number(number_schema) => number_schema.validate(context, value),
+            YamlSchema::Object(object_schema) => object_schema.validate(context, value),
             YamlSchema::Array(array_schema) => array_schema.validate(context, value),
+            YamlSchema::AnyOf(any_of_schema) => any_of_schema.validate(context, value),
+            YamlSchema::OneOf(one_of_schema) => one_of_schema.validate(context, value),
+            YamlSchema::Not(not_schema) => not_schema.validate(context, value),
         }
     }
 }

@@ -1,0 +1,34 @@
+use crate::schemas::NotSchema;
+use crate::validation::Context;
+use crate::validation::Validator;
+use crate::Result;
+use log::debug;
+use serde_yaml::Value;
+
+impl Validator for NotSchema {
+    fn validate(&self, context: &Context, value: &Value) -> Result<()> {
+        debug!(
+            "Not: Validating value: {:?} against schema: {}",
+            value, self.not
+        );
+
+        // Create a sub-context to validate against the inner schema
+        let sub_context = Context::new(true);
+        let sub_result = self.not.validate(&sub_context, value);
+
+        match sub_result {
+            Ok(()) | Err(crate::Error::FailFast) => {
+                // If the inner schema validates successfully, then this is an error for 'not'
+                if !sub_context.has_errors() {
+                    context.add_error("Value matches schema in `not`");
+                    fail_fast!(context);
+                }
+            }
+            Err(e) => return Err(e),
+        }
+
+        // If we get here, then the inner schema failed validation, which means
+        // this 'not' validation succeeds
+        Ok(())
+    }
+}

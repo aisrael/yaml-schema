@@ -1,8 +1,5 @@
 use regex::Regex;
 
-use crate::Result;
-use crate::{validation::strings::validate_string, Context, Validator};
-
 /// A string schema
 #[derive(Debug, Default)]
 pub struct StringSchema {
@@ -33,26 +30,5 @@ fn are_patterns_equal(a: &Option<Regex>, b: &Option<Regex>) -> bool {
 impl std::fmt::Display for StringSchema {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "String {:?}", self)
-    }
-}
-
-impl Validator for StringSchema {
-    fn validate(&self, context: &Context, value: &serde_yaml::Value) -> Result<()> {
-        match validate_string(
-            self.min_length,
-            self.max_length,
-            self.pattern.as_ref(),
-            value,
-        ) {
-            Ok(errors) => {
-                if !errors.is_empty() {
-                    for error in errors {
-                        context.add_error(error);
-                    }
-                }
-                Ok(())
-            }
-            Err(e) => generic_error!("{}", e),
-        }
     }
 }
