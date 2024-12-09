@@ -9,7 +9,6 @@ use crate::generic_error;
 use crate::unsupported_type;
 use crate::BoolOrTypedSchema;
 use crate::Number;
-use crate::PropertyNamesValue;
 use crate::Result;
 
 /// Instead of From<deser::YamlSchema>, or rather, Into<T>
@@ -32,6 +31,11 @@ pub enum YamlSchema {
     // Need to put TypedSchema last, because not specifying `type:`
     // is interpreted as `type: null` (None)
     TypedSchema(Box<TypedSchema>),
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct PropertyNamesValue {
+    pub pattern: String,
 }
 
 /// A typed schema is a schema that has a type
@@ -437,7 +441,8 @@ impl Deser<crate::ObjectSchema> for TypedSchema {
                     .map(|(k, v)| (k.clone(), v.deserialize().unwrap()))
                     .collect()
             }),
-            property_names: self.property_names.clone(),
+            // if Some(PropertyNamesValue) => Some(p.pattern.clone()),
+            property_names: self.property_names.as_ref().map(|p| p.pattern.clone()),
             min_properties: self.min_properties,
             max_properties: self.max_properties,
         })

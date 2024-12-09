@@ -112,7 +112,7 @@ impl ObjectSchema {
             }
             // Finally, we check if it matches property_names
             if let Some(property_names) = &self.property_names {
-                let re = regex::Regex::new(&property_names.pattern).map_err(|e| {
+                let re = regex::Regex::new(property_names).map_err(|e| {
                     Error::GenericError(format!("Invalid regular expression pattern: {}", e))
                 })?;
                 debug!("Regex for property names: {}", re.as_str());

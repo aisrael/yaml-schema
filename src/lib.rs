@@ -63,11 +63,6 @@ impl std::fmt::Display for Number {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-pub struct PropertyNamesValue {
-    pub pattern: String,
-}
-
 /// YamlSchema is the core of the validation model
 #[derive(Debug, Default, PartialEq)]
 pub enum YamlSchema {
