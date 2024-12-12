@@ -2,13 +2,12 @@ use cucumber::{gherkin::Step, given, then, World};
 use log::{debug, error};
 use std::cell::RefCell;
 use std::rc::Rc;
-use yaml_schema::deser::{self, Deser};
 use yaml_schema::validation::ValidationError;
-use yaml_schema::{Engine, YamlSchema};
+use yaml_schema::{Engine, RootSchema, YamlSchema};
 
 #[derive(Debug, Default, World)]
 pub struct BasicsWorld {
-    yaml_schema: YamlSchema,
+    root_schema: RootSchema,
     yaml_schema_error: Option<yaml_schema::Error>,
     errors: Option<Rc<RefCell<Vec<ValidationError>>>>,
 }
@@ -17,9 +16,8 @@ pub struct BasicsWorld {
 async fn a_yaml_schema(world: &mut BasicsWorld, step: &Step) {
     let schema = step.docstring().unwrap();
     debug!("schema: {:?}", schema);
-    let deser_schema: deser::YamlSchema = serde_yaml::from_str(schema).unwrap();
-    match deser_schema.deserialize() {
-        Ok(yaml_schema) => world.yaml_schema = yaml_schema,
+    match RootSchema::load_from_str(schema) {
+        Ok(root_schema) => world.root_schema = root_schema,
         Err(e) => {
             error!("Error: {:?}", e);
             world.yaml_schema_error = Some(e);
@@ -44,7 +42,7 @@ async fn it_should_accept(world: &mut BasicsWorld, step: &Step) {
     debug!("raw_input: {:?}", raw_input);
     let input: serde_yaml::Value = serde_yaml::from_str(raw_input).unwrap();
     debug!("input: {:?}", input);
-    let schema = &world.yaml_schema;
+    let schema = &world.root_schema.schema;
     assert!(accepts(schema, &input));
 }
 
@@ -54,7 +52,7 @@ async fn it_should_not_accept(world: &mut BasicsWorld, step: &Step) {
     debug!("raw_input: {:?}", raw_input);
     let input: serde_yaml::Value = serde_yaml::from_str(raw_input).unwrap();
     debug!("input: {:?}", input);
-    let schema = &world.yaml_schema;
+    let schema = &world.root_schema.schema;
     debug!("schema: {:?}", schema);
     let engine = Engine::new(schema);
     match engine.evaluate(&input, true) {
@@ -87,20 +85,7 @@ fn the_error_message_should_be(world: &mut BasicsWorld, expected_error_message: 
 #[then(expr = "it should fail with {string}")]
 async fn it_should_fail_with(world: &mut BasicsWorld, expected_error_message: String) {
     if let Some(yaml_schema_error) = world.yaml_schema_error.as_ref() {
-        match yaml_schema_error {
-            yaml_schema::Error::GenericError(actual_error_message) => {
-                debug!("expected_error_message: {:?}", expected_error_message);
-                debug!("actual_error_message: {:?}", actual_error_message);
-                assert_eq!(expected_error_message, *actual_error_message)
-            }
-            yaml_schema::Error::NotYetImplemented => {
-                assert_eq!(expected_error_message, "a NotYetImplemented error");
-            }
-            yaml_schema::Error::UnsupportedType(actual_error_message) => {
-                assert_eq!(expected_error_message, *actual_error_message)
-            }
-            _ => panic!("Unexpected error: {:?}", yaml_schema_error),
-        }
+        assert_eq!(expected_error_message, yaml_schema_error.to_string());
     } else {
         panic!("Expected an error message, but there was no error!");
     }

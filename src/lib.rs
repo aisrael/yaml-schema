@@ -1,10 +1,10 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-pub mod deser;
 pub mod engine;
 #[macro_use]
 pub mod error;
+pub mod loader;
 pub mod schemas;
 pub mod validation;
 
@@ -14,6 +14,7 @@ pub use schemas::AnyOfSchema;
 pub use schemas::ArraySchema;
 pub use schemas::BoolOrTypedSchema;
 pub use schemas::ConstSchema;
+pub use schemas::ConstValue;
 pub use schemas::EnumSchema;
 pub use schemas::IntegerSchema;
 pub use schemas::NotSchema;
@@ -33,6 +34,38 @@ pub fn version() -> String {
 
 // Alias for std::result::Result<T, yaml_schema::Error>
 pub type Result<T> = std::result::Result<T, Error>;
+
+/// A RootSchema is a YamlSchema document
+#[derive(Debug, Default)]
+pub struct RootSchema {
+    pub id: Option<String>,
+    pub meta_schema: Option<String>,
+    pub schema: YamlSchema,
+}
+
+impl RootSchema {
+    /// Create a new RootSchema with a YamlSchema::Empty
+    pub fn new(schema: YamlSchema) -> RootSchema {
+        RootSchema {
+            id: None,
+            meta_schema: None,
+            schema,
+        }
+    }
+
+    /// Load a RootSchema from a file
+    pub fn load_file(path: &str) -> Result<RootSchema> {
+        loader::load_file(path)
+    }
+
+    pub fn load_from_str(schema: &str) -> Result<RootSchema> {
+        let docs = saphyr::Yaml::load_from_str(&schema)?;
+        if docs.is_empty() {
+            return Ok(RootSchema::new(YamlSchema::Empty)); // empty schema
+        }
+        loader::load_from_doc(docs.first().unwrap())
+    }
+}
 
 /// A Number is either an integer or a float
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
@@ -126,14 +159,6 @@ impl From<TypedSchema> for YamlSchema {
             TypedSchema::Number(number_schema) => YamlSchema::Number(number_schema),
             TypedSchema::Object(object_schema) => YamlSchema::Object(object_schema),
             TypedSchema::String(string_schema) => YamlSchema::String(string_schema),
-        }
-    }
-}
-
-impl From<deser::EnumSchema> for EnumSchema {
-    fn from(deserialized: deser::EnumSchema) -> Self {
-        EnumSchema {
-            r#enum: deserialized.r#enum,
         }
     }
 }

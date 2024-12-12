@@ -1,15 +1,21 @@
 use thiserror::Error;
 
 /// Unexpected errors that can occur during the validation of a YAML schema
-#[derive(Clone, Debug, Error, PartialEq)]
+#[derive(Debug, Error)]
 pub enum Error {
     #[error("Not yet implemented!")]
     NotYetImplemented,
+    #[error("IO error: {0}")]
+    IOError(#[from] std::io::Error),
+    #[error("File not found: {0}")]
+    FileNotFound(String),
     #[error("YAML parsing error: {0}")]
-    YamlParsingError(#[from] yaml_rust2::ScanError),
+    YamlParsingError(#[from] saphyr::ScanError),
+    #[error("Float parsing error: {0}")]
+    FloatParsingError(#[from] std::num::ParseFloatError),
     #[error("Regex parsing error: {0}")]
     RegexParsingError(#[from] regex::Error),
-    #[error("Unsupported type: {0}")]
+    #[error("Unsupported type '{0}'!")]
     UnsupportedType(String),
     #[error("Generic YAML schema error: {0}")]
     GenericError(String),

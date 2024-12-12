@@ -25,6 +25,7 @@ pub use number::NumberSchema;
 pub use object::ObjectSchema;
 pub use one_of::OneOfSchema;
 pub use r#const::ConstSchema;
+pub use r#const::ConstValue;
 pub use r#enum::EnumSchema;
 pub use string::StringSchema;
 

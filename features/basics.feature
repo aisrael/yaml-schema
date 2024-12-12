@@ -70,7 +70,7 @@ Feature: Basic YAML schema
       ```
       type: foo
       ```
-    Then it should fail with "Unrecognized type 'foo'!"
+    Then it should fail with "Unsupported type 'foo'!"
 
   Scenario: "type: string" should accept strings
     Given a YAML schema:
