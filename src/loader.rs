@@ -333,10 +333,50 @@ impl Constructor<ObjectSchema> for ObjectSchema {
                         println!("additional_properties: {:#?}", additional_properties);
                         object_schema.additional_properties = Some(additional_properties);
                     }
+                    "minProperties" => {
+                        object_schema.min_properties = Some(load_integer(value)? as usize);
+                    }
+                    "maxProperties" => {
+                        object_schema.max_properties = Some(load_integer(value)? as usize);
+                    }
                     "patternProperties" => {
                         let pattern_properties = load_properties(value.as_hash().unwrap())?;
                         println!("pattern_properties: {:#?}", pattern_properties);
                         object_schema.pattern_properties = Some(pattern_properties);
+                    }
+                    "propertyNames" => {
+                        if !value.is_hash() {
+                            return Err(unsupported_type!(
+                                "propertyNames: Expected a hash, but got: {:?}",
+                                value
+                            ));
+                        }
+                        let hash = value.as_hash().unwrap();
+                        if !hash.contains_key(&sys("pattern")) {
+                            return Err(generic_error!(
+                                "propertyNames: Missing required key: pattern"
+                            ));
+                        }
+                        let pattern = load_string_value(hash.get(&sys("pattern")).unwrap())?;
+                        object_schema.property_names = Some(pattern);
+                    }
+                    "required" => {
+                        if !value.is_array() {
+                            return Err(unsupported_type!(
+                                "required: Expected an array, but got: {:?}",
+                                value
+                            ));
+                        }
+                        let array = value.as_vec().unwrap();
+                        object_schema.required = Some(
+                            array
+                                .iter()
+                                .map(|v| match v {
+                                    saphyr::Yaml::String(s) => Ok(s.clone()),
+                                    _ => unimplemented!(),
+                                })
+                                .collect::<Result<Vec<String>>>()?,
+                        );
                     }
                     "type" => {
                         let s = load_string_value(value)?;
@@ -351,6 +391,7 @@ impl Constructor<ObjectSchema> for ObjectSchema {
         Ok(object_schema)
     }
 }
+
 
 fn load_properties(hash: &saphyr::Hash) -> Result<HashMap<String, YamlSchema>> {
     let mut properties = HashMap::new();
@@ -379,6 +420,13 @@ fn load_additional_properties(value: &saphyr::Yaml) -> Result<BoolOrTypedSchema>
             "Expected type: boolean or hash, but got: {:?}",
             value
         )),
+    }
+}
+
+fn load_integer(value: &saphyr::Yaml) -> Result<i64> {
+    match value {
+        saphyr::Yaml::Integer(i) => Ok(*i),
+        _ => Err(unsupported_type!("Expected type: integer, but got: {:?}", value)),
     }
 }
 
