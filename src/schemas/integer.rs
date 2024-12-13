@@ -1,3 +1,5 @@
+use log::debug;
+
 use crate::validation::Context;
 use crate::validation::Validator;
 use crate::Number;
@@ -21,6 +23,8 @@ impl std::fmt::Display for IntegerSchema {
 
 impl Validator for IntegerSchema {
     fn validate(&self, context: &Context, value: &serde_yaml::Value) -> Result<()> {
+        debug!("[IntegerSchema] self: {}", self);
+        debug!("[IntegerSchema] Validating value: {:?}", value);
         match value.as_i64() {
             Some(i) => self.validate_number_i64(context, i),
             None => {

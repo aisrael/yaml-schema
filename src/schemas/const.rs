@@ -1,37 +1,11 @@
 use crate::Number;
 use log::debug;
 
-use super::Validator;
+use crate::ConstValue;
 use crate::Context;
 use crate::Result;
 
-#[derive(Debug, PartialEq)]
-pub enum ConstValue {
-    Boolean(bool),
-    Number(Number),
-    String(String),
-}
-
-impl ConstValue {
-    pub fn boolean(value: bool) -> ConstValue {
-        ConstValue::Boolean(value)
-    }
-    pub fn integer(value: i64) -> ConstValue {
-        ConstValue::Number(Number::integer(value))
-    }
-    pub fn float(value: f64) -> ConstValue {
-        ConstValue::Number(Number::float(value))
-    }
-    pub fn string<V: Into<String>>(value: V) -> ConstValue {
-        ConstValue::String(value.into())
-    }
-}
-
-impl std::fmt::Display for ConstValue {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "const: {}", self)
-    }
-}
+use super::Validator;
 
 /// A const schema represents a constant value
 #[derive(Debug, PartialEq)]
@@ -59,6 +33,13 @@ impl Validator for ConstSchema {
                         "Const validation failed, expected: {:?}, got: {:?}",
                         b, value
                     );
+                    context.add_error(error);
+                }
+            }
+            ConstValue::Null => {
+                if !value.is_null() {
+                    let error =
+                        format!("Const validation failed, expected: null, got: {:?}", value);
                     context.add_error(error);
                 }
             }

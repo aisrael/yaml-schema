@@ -19,7 +19,7 @@ Feature: Enumerated values
       ```
     But it should NOT accept:
       ```
-      blue      
+      blue
       ```
 
   @enum

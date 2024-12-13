@@ -35,8 +35,8 @@ impl std::fmt::Display for ValidationError {
 
 impl Validator for YamlSchema {
     fn validate(&self, context: &Context, value: &serde_yaml::Value) -> Result<()> {
-        debug!("YamlSchema: self: {}", self);
-        debug!("YamlSchema: Validating value: {:?}", value);
+        debug!("[YamlSchema] self: {}", self);
+        debug!("[YamlSchema] Validating value: {:?}", value);
         match self {
             YamlSchema::Empty => Ok(()),
             YamlSchema::TypeNull => {

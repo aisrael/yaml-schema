@@ -17,7 +17,11 @@ pub struct ArraySchema {
 
 impl std::fmt::Display for ArraySchema {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Array {:?}", self)
+        write!(
+            f,
+            "Array{{ items: {:?}, prefix_items: {:?}, contains: {:?}}}",
+            self.items, self.prefix_items, self.contains
+        )
     }
 }
 

@@ -14,7 +14,6 @@ pub use schemas::AnyOfSchema;
 pub use schemas::ArraySchema;
 pub use schemas::BoolOrTypedSchema;
 pub use schemas::ConstSchema;
-pub use schemas::ConstValue;
 pub use schemas::EnumSchema;
 pub use schemas::IntegerSchema;
 pub use schemas::NotSchema;
@@ -85,6 +84,16 @@ impl Number {
     pub fn float(value: f64) -> Number {
         Number::Float(value)
     }
+
+    fn from_serde_yaml_number(value: &serde_yaml::Number) -> Self {
+        if value.is_i64() {
+            return Number::Integer(value.as_i64().unwrap());
+        } else if value.is_f64() {
+            return Number::Float(value.as_f64().unwrap());
+        } else {
+            panic!("Expected an integer or float, but got: {:?}", value);
+        }
+    }
 }
 
 impl std::fmt::Display for Number {
@@ -92,6 +101,62 @@ impl std::fmt::Display for Number {
         match self {
             Number::Integer(v) => write!(f, "{}", v),
             Number::Float(v) => write!(f, "{}", v),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub enum ConstValue {
+    Boolean(bool),
+    Null,
+    Number(Number),
+    String(String),
+}
+
+impl ConstValue {
+    pub fn boolean(value: bool) -> ConstValue {
+        ConstValue::Boolean(value)
+    }
+    pub fn integer(value: i64) -> ConstValue {
+        ConstValue::Number(Number::integer(value))
+    }
+    pub fn float(value: f64) -> ConstValue {
+        ConstValue::Number(Number::float(value))
+    }
+    pub fn null() -> ConstValue {
+        ConstValue::Null
+    }
+    pub fn string<V: Into<String>>(value: V) -> ConstValue {
+        ConstValue::String(value.into())
+    }
+    pub fn from_saphyr_yaml(value: &saphyr::Yaml) -> ConstValue {
+        match value {
+            saphyr::Yaml::Boolean(b) => ConstValue::Boolean(*b),
+            saphyr::Yaml::Integer(i) => ConstValue::Number(Number::integer(*i)),
+            saphyr::Yaml::Real(s) => ConstValue::Number(Number::float(s.parse::<f64>().unwrap())),
+            saphyr::Yaml::String(s) => ConstValue::String(s.clone()),
+            saphyr::Yaml::Null => ConstValue::Null,
+            _ => panic!("Expected a constant value, but got: {:?}", value),
+        }
+    }
+    pub fn from_serde_yaml_value(value: &serde_yaml::Value) -> ConstValue {
+        match value {
+            serde_yaml::Value::Bool(b) => ConstValue::Boolean(*b),
+            serde_yaml::Value::Number(n) => ConstValue::Number(Number::from_serde_yaml_number(n)),
+            serde_yaml::Value::String(s) => ConstValue::String(s.clone()),
+            serde_yaml::Value::Null => ConstValue::Null,
+            _ => panic!("Expected a constant value, but got: {:?}", value),
+        }
+    }
+}
+
+impl std::fmt::Display for ConstValue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ConstValue::Boolean(b) => write!(f, "const: {}", b),
+            ConstValue::Null => write!(f, "const: null"),
+            ConstValue::Number(n) => write!(f, "const: {}", n),
+            ConstValue::String(s) => write!(f, "const: {}", s),
         }
     }
 }
@@ -192,5 +257,25 @@ fn format_serde_yaml_value(value: &serde_yaml::Value) -> String {
         serde_yaml::Value::Number(n) => n.to_string(),
         serde_yaml::Value::String(s) => format!("\"{}\"", s),
         _ => format!("{:?}", value),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_const_value_from_serde_yaml_value() {
+        let yaml = serde_yaml::Value::Bool(true);
+        let const_value = ConstValue::from_serde_yaml_value(&yaml);
+        assert_eq!(const_value, ConstValue::Boolean(true));
+
+        let yaml = serde_yaml::Value::Number(42.into());
+        let const_value = ConstValue::from_serde_yaml_value(&yaml);
+        assert_eq!(const_value, ConstValue::Number(Number::integer(42)));
+
+        let yaml = serde_yaml::Value::String("Drive".to_string());
+        let const_value = ConstValue::from_serde_yaml_value(&yaml);
+        assert_eq!(const_value, ConstValue::String("Drive".to_string()));
     }
 }
