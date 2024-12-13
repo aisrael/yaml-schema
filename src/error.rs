@@ -35,10 +35,10 @@ macro_rules! fail_fast {
 #[macro_export]
 macro_rules! unsupported_type {
     ($s:literal, $($e:expr),+) => {
-        Err($crate::Error::UnsupportedType(format!($s, $($e),+)))
+        $crate::Error::UnsupportedType(format!($s, $($e),+))
     };
     ($e:expr) => {
-        Err($crate::Error::UnsupportedType($e))
+        $crate::Error::UnsupportedType($e)
     };
 }
 

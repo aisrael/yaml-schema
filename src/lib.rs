@@ -59,7 +59,7 @@ impl RootSchema {
     }
 
     pub fn load_from_str(schema: &str) -> Result<RootSchema> {
-        let docs = saphyr::Yaml::load_from_str(&schema)?;
+        let docs = saphyr::Yaml::load_from_str(schema)?;
         if docs.is_empty() {
             return Ok(RootSchema::new(YamlSchema::Empty)); // empty schema
         }

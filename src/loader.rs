@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 /// Loader defines the interface for loading a schema from a file or a string
 use std::fs;
 
@@ -9,6 +10,7 @@ use crate::ConstValue;
 use crate::Error;
 use crate::Number;
 use crate::NumberSchema;
+use crate::ObjectSchema;
 use crate::Result;
 use crate::RootSchema;
 use crate::StringSchema;
@@ -108,11 +110,15 @@ fn load_sub_schema(hash: &saphyr::Hash) -> Result<Option<YamlSchema>> {
                     let number_schema = NumberSchema::construct(hash)?;
                     return Ok(Some(YamlSchema::Number(number_schema)));
                 }
+                "object" => {
+                    let object_schema = ObjectSchema::construct(hash)?;
+                    return Ok(Some(YamlSchema::Object(object_schema)));
+                }
                 "string" => {
                     let string_schema = StringSchema::construct(hash)?;
                     return Ok(Some(YamlSchema::String(string_schema)));
                 }
-                _ => return unsupported_type!(s.to_string()),
+                _ => return Err(unsupported_type!(s.to_string())),
             },
             _ => unimplemented!(),
         }
@@ -167,6 +173,16 @@ trait Constructor<T> {
     fn construct(hash: &saphyr::Hash) -> Result<T>;
 }
 
+fn load_string_value(value: &saphyr::Yaml) -> Result<String> {
+    match value {
+        saphyr::Yaml::String(s) => Ok(s.clone()),
+        _ => Err(unsupported_type!(
+            "Expected a string value, but got: {:?}",
+            value
+        )),
+    }
+}
+
 impl Constructor<ArraySchema> for ArraySchema {
     fn construct(hash: &saphyr::Hash) -> Result<ArraySchema> {
         let mut array_schema = ArraySchema::default();
@@ -179,17 +195,17 @@ impl Constructor<ArraySchema> for ArraySchema {
                         array_schema.items = Some(array_items);
                     }
                     "type" => {
-                        if let saphyr::Yaml::String(s) = value {
-                            if s != "array" {
-                                return unsupported_type!("Expected type: array, but got: {}", s);
-                            }
-                        } else {
-                            return unsupported_type!("Expected type: array, but got: {:?}", value);
+                        let s = load_string_value(value)?;
+                        if s != "array" {
+                            return Err(unsupported_type!("Expected type: array, but got: {}", s));
                         }
                     }
                     "prefixItems" => {
                         if !value.is_array() {
-                            return unsupported_type!("Expected type: array, but got: {:?}", value);
+                            return Err(unsupported_type!(
+                                "Expected type: array, but got: {:?}",
+                                value
+                            ));
                         }
                         let prefix_items = load_prefix_items(value.as_vec().unwrap())?;
                         println!("prefix_items: {:#?}", prefix_items);
@@ -203,6 +219,76 @@ impl Constructor<ArraySchema> for ArraySchema {
     }
 }
 
+impl Constructor<ObjectSchema> for ObjectSchema {
+    fn construct(hash: &saphyr::Hash) -> Result<ObjectSchema> {
+        let mut object_schema = ObjectSchema::default();
+        for (key, value) in hash.iter() {
+            if let saphyr::Yaml::String(key) = key {
+                match key.as_str() {
+                    "properties" => {
+                        let properties = load_properties(value.as_hash().unwrap())?;
+                        println!("properties: {:#?}", properties);
+                        object_schema.properties = Some(properties);
+                    }
+                    "additionalProperties" => {
+                        let additional_properties = load_additional_properties(value)?;
+                        println!("additional_properties: {:#?}", additional_properties);
+                        object_schema.additional_properties = Some(additional_properties);
+                    }
+                    "patternProperties" => {
+                        let pattern_properties = load_properties(value.as_hash().unwrap())?;
+                        println!("pattern_properties: {:#?}", pattern_properties);
+                        object_schema.pattern_properties = Some(pattern_properties);
+                    }
+                    "type" => {
+                        let s = load_string_value(value)?;
+                        if s != "object" {
+                            return Err(unsupported_type!("Expected type: object, but got: {}", s));
+                        }
+                    }
+                    _ => unimplemented!(),
+                }
+            }
+        }
+        Ok(object_schema)
+    }
+}
+
+fn load_properties(hash: &saphyr::Hash) -> Result<HashMap<String, YamlSchema>> {
+    let mut properties = HashMap::new();
+    for (key, value) in hash.iter() {
+        if let saphyr::Yaml::String(key) = key {
+            let schema = load_sub_schema(value.as_hash().unwrap())?.unwrap();
+            properties.insert(key.clone(), schema);
+        } else {
+            return Err(unsupported_type!("Expected a string key, but got: {:?}", key));
+        }
+    }
+    Ok(properties)
+}
+
+fn load_additional_properties(value: &saphyr::Yaml) -> Result<BoolOrTypedSchema> {
+    match value {
+        saphyr::Yaml::Boolean(b) => Ok(BoolOrTypedSchema::Boolean(*b)),
+        saphyr::Yaml::Hash(hash) => {
+            let schema = load_typed_schema(hash)?.unwrap();
+            Ok(BoolOrTypedSchema::TypedSchema(Box::new(schema)))
+        }
+        _ => Err(unsupported_type!("Expected type: boolean or hash, but got: {:?}", value)),
+    }
+}
+
+fn load_number(value: &saphyr::Yaml) -> Result<Number> {
+    match value {
+        saphyr::Yaml::Integer(i) => Ok(Number::integer(*i)),
+        saphyr::Yaml::Real(f) => Ok(Number::float(f.parse::<f64>()?)),
+        _ => Err(unsupported_type!(
+            "Expected type: integer or float, but got: {:?}",
+            value
+        )),
+    }
+}
+
 impl Constructor<NumberSchema> for NumberSchema {
     fn construct(hash: &saphyr::Hash) -> Result<NumberSchema> {
         let mut number_schema = NumberSchema::default();
@@ -210,72 +296,30 @@ impl Constructor<NumberSchema> for NumberSchema {
             if let saphyr::Yaml::String(key) = key {
                 match key.as_str() {
                     "minimum" => {
-                        if let saphyr::Yaml::Integer(i) = value {
-                            number_schema.minimum = Some(Number::integer(*i));
-                        } else if let saphyr::Yaml::Real(f) = value {
-                            number_schema.minimum = Some(Number::float(f.parse::<f64>()?));
-                        } else {
-                            return unsupported_type!(
-                                "minimum expected integer or float, but got: {:?}",
-                                value
-                            );
-                        }
+                        let minimum = load_number(value).map_err(|_| {
+                            crate::Error::UnsupportedType(format!(
+                                "Expected type: integer or float, but got: {:?}",
+                                &value
+                            ))
+                        })?;
+                        number_schema.minimum = Some(minimum);
                     }
                     "maximum" => {
-                        if let saphyr::Yaml::Integer(i) = value {
-                            number_schema.maximum = Some(Number::integer(*i));
-                        } else if let saphyr::Yaml::Real(f) = value {
-                            number_schema.maximum = Some(Number::float(f.parse::<f64>()?));
-                        } else {
-                            return unsupported_type!(
-                                "maximum expected integer or float, but got: {:?}",
-                                value
-                            );
-                        }
+                        number_schema.maximum = Some(load_number(value)?);
                     }
                     "exclusiveMinimum" => {
-                        if let saphyr::Yaml::Integer(i) = value {
-                            number_schema.exclusive_minimum = Some(Number::integer(*i));
-                        } else if let saphyr::Yaml::Real(f) = value {
-                            number_schema.exclusive_minimum = Some(Number::float(f.parse::<f64>()?));
-                        } else {
-                            return unsupported_type!(
-                                "exclusiveMinimum expected integer or float, but got: {:?}",
-                                value
-                            );
-                        }
+                        number_schema.exclusive_minimum = Some(load_number(value)?);
                     }
                     "exclusiveMaximum" => {
-                        if let saphyr::Yaml::Integer(i) = value {
-                            number_schema.exclusive_maximum = Some(Number::integer(*i));
-                        } else if let saphyr::Yaml::Real(f) = value {
-                            number_schema.exclusive_maximum = Some(Number::float(f.parse::<f64>()?));
-                        } else {
-                            return unsupported_type!(
-                                "exclusiveMaximum expected integer or float, but got: {:?}",
-                                value
-                            );
-                        }
+                        number_schema.exclusive_maximum = Some(load_number(value)?);
                     }
                     "multipleOf" => {
-                        if let saphyr::Yaml::Integer(i) = value {
-                            number_schema.multiple_of = Some(Number::integer(*i));
-                        } else if let saphyr::Yaml::Real(f) = value {
-                            number_schema.multiple_of = Some(Number::float(f.parse::<f64>()?));
-                        } else {
-                            return unsupported_type!(
-                                "multipleOf expected integer or float, but got: {:?}",
-                                value
-                            );
-                        }
+                        number_schema.multiple_of = Some(load_number(value)?);
                     }
                     "type" => {
-                        if let saphyr::Yaml::String(s) = value {
-                            if s != "number" {
-                                return unsupported_type!("Expected type: number, but got: {}", s);
-                            }
-                        } else {
-                            return unsupported_type!("Expected type: number, but got: {:?}", value);
+                        let s = load_string_value(value)?;
+                        if s != "number" {
+                            return Err(unsupported_type!("Expected type: number, but got: {}", s));
                         }
                     }
                     _ => unimplemented!(),
@@ -296,20 +340,20 @@ impl Constructor<StringSchema> for StringSchema {
                         if let saphyr::Yaml::Integer(i) = value {
                             string_schema.min_length = Some(*i as usize);
                         } else {
-                            return unsupported_type!(
+                            return Err(unsupported_type!(
                                 "minLength expected integer, but got: {:?}",
                                 value
-                            );
+                            ));
                         }
                     }
                     "maxLength" => {
                         if let saphyr::Yaml::Integer(i) = value {
                             string_schema.max_length = Some(*i as usize);
                         } else {
-                            return unsupported_type!(
+                            return Err(unsupported_type!(
                                 "maxLength expected integer, but got: {:?}",
                                 value
-                            );
+                            ));
                         }
                     }
                     "pattern" => {
@@ -317,22 +361,16 @@ impl Constructor<StringSchema> for StringSchema {
                             let regex = regex::Regex::new(s.as_str())?;
                             string_schema.pattern = Some(regex);
                         } else {
-                            return unsupported_type!(
+                            return Err(unsupported_type!(
                                 "pattern expected string, but got: {:?}",
                                 value
-                            );
+                            ));
                         }
                     }
                     "type" => {
-                        if let saphyr::Yaml::String(s) = value {
-                            if s != "string" {
-                                return unsupported_type!("Expected type: string, but got: {}", s);
-                            }
-                        } else {
-                            return unsupported_type!(
-                                "Expected type: string, but got: {:?}",
-                                value
-                            );
+                        let s = load_string_value(value)?;
+                        if s != "string" {
+                            return Err(unsupported_type!("Expected type: string, but got: {}", s));
                         }
                     }
                     _ => unimplemented!(),
@@ -375,7 +413,7 @@ impl From<RootLoader> for RootSchema {
 fn yaml_to_string(yaml: &saphyr::Yaml, msg: &str) -> Result<String> {
     match yaml {
         saphyr::Yaml::String(s) => Ok(s.clone()),
-        _ => unsupported_type!("Expected a string, but got: {:?}", msg),
+        _ => Err(unsupported_type!("Expected a string, but got: {:?}", msg)),
     }
 }
 
@@ -406,7 +444,7 @@ mod tests {
     #[test]
     fn test_const_string() {
         let docs = saphyr::Yaml::load_from_str("const: string value").unwrap();
-        let root_schema = load_from_doc(&docs.first().unwrap()).unwrap();
+        let root_schema = load_from_doc(docs.first().unwrap()).unwrap();
         let const_schema = ConstSchema {
             r#const: ConstValue::string("string value"),
         };
@@ -416,7 +454,7 @@ mod tests {
     #[test]
     fn test_const_integer() {
         let docs = saphyr::Yaml::load_from_str("const: 42").unwrap();
-        let root_schema = load_from_doc(&docs.first().unwrap()).unwrap();
+        let root_schema = load_from_doc(docs.first().unwrap()).unwrap();
         let const_schema = ConstSchema {
             r#const: ConstValue::integer(42),
         };
@@ -426,7 +464,7 @@ mod tests {
     #[test]
     fn test_type_foo_should_error() {
         let docs = saphyr::Yaml::load_from_str("type: foo").unwrap();
-        let root_schema = load_from_doc(&docs.first().unwrap());
+        let root_schema = load_from_doc(docs.first().unwrap());
         assert!(root_schema.is_err());
         assert_eq!(
             root_schema.unwrap_err().to_string(),
@@ -437,7 +475,7 @@ mod tests {
     #[test]
     fn test_type_string() {
         let docs = saphyr::Yaml::load_from_str("type: string").unwrap();
-        let root_schema = load_from_doc(&docs.first().unwrap()).unwrap();
+        let root_schema = load_from_doc(docs.first().unwrap()).unwrap();
         let string_schema = StringSchema::default();
         assert_eq!(root_schema.schema, YamlSchema::String(string_schema));
     }
@@ -445,18 +483,19 @@ mod tests {
     #[test]
     fn test_type_string_with_pattern() {
         let docs = saphyr::Yaml::load_from_str(
- r#"
+            r#"
         type: string
         pattern: "^(\\([0-9]{3}\\))?[0-9]{3}-[0-9]{4}$"
-        "#).unwrap();
-        let root_schema = load_from_doc(&docs.first().unwrap()).unwrap();
+        "#,
+        )
+        .unwrap();
+        let root_schema = load_from_doc(docs.first().unwrap()).unwrap();
         let string_schema = StringSchema {
             pattern: Some(Regex::new("^(\\([0-9]{3}\\))?[0-9]{3}-[0-9]{4}$").unwrap()),
             ..Default::default()
         };
         assert_eq!(root_schema.schema, YamlSchema::String(string_schema));
     }
-
 
     #[test]
     fn test_array_constructor_items_true() {
