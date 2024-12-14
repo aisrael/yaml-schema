@@ -587,7 +587,7 @@ fn load_array_items(value: &saphyr::Yaml) -> Result<BoolOrTypedSchema> {
     }
 }
 
-fn load_enum_values(values: &Vec<saphyr::Yaml>) -> Result<Vec<ConstValue>> {
+fn load_enum_values(values: &[saphyr::Yaml]) -> Result<Vec<ConstValue>> {
     Ok(values.iter().map(ConstValue::from_saphyr_yaml).collect())
 }
 

@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 pub mod engine;
 #[macro_use]
@@ -228,18 +227,6 @@ impl From<TypedSchema> for YamlSchema {
             TypedSchema::String(string_schema) => YamlSchema::String(string_schema),
         }
     }
-}
-
-/// Formats a map of values as a string, by joining them with commas
-fn format_map<V>(map: &HashMap<String, V>) -> String
-where
-    V: std::fmt::Display,
-{
-    let items: Vec<String> = map
-        .iter()
-        .map(|(k, v)| format!("\"{}\": {}", k, v))
-        .collect();
-    format!("{{ {} }}", items.join(", "))
 }
 
 /// Formats a vector of values as a string, by joining them with commas
