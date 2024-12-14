@@ -23,7 +23,7 @@ impl Validator for EnumSchema {
     fn validate(&self, context: &Context, value: &serde_yaml::Value) -> Result<()> {
         debug!("[EnumSchema] self: {}", self);
         debug!("[EnumSchema] Validating value: {:?}", value);
-        let const_value = ConstValue::from_serde_yaml_value(&value);
+        let const_value = ConstValue::from_serde_yaml_value(value);
         debug!("[EnumSchema] const_value: {}", const_value);
         if !self.r#enum.contains(&const_value) {
             let value_str = format_serde_yaml_value(value);

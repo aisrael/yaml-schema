@@ -87,7 +87,7 @@ impl Number {
 
     fn from_serde_yaml_number(value: &serde_yaml::Number) -> Self {
         if value.is_i64() {
-            return Number::Integer(value.as_i64().unwrap());
+            Number::Integer(value.as_i64().unwrap())
         } else if value.is_f64() {
             return Number::Float(value.as_f64().unwrap());
         } else {
@@ -214,6 +214,8 @@ impl std::fmt::Display for YamlSchema {
     }
 }
 
+/// Converts (upcast) a TypedSchema to a YamlSchema
+/// Since a YamlSchema is a superset of a TypedSchema, this is a lossless conversion
 impl From<TypedSchema> for YamlSchema {
     fn from(schema: TypedSchema) -> Self {
         match schema {

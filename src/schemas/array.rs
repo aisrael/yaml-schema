@@ -11,7 +11,7 @@ use super::BoolOrTypedSchema;
 #[derive(Debug, Default, PartialEq)]
 pub struct ArraySchema {
     pub items: Option<BoolOrTypedSchema>,
-    pub prefix_items: Option<Vec<Box<YamlSchema>>>,
+    pub prefix_items: Option<Vec<YamlSchema>>,
     pub contains: Option<Box<YamlSchema>>,
 }
 

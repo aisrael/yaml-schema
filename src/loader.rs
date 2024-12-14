@@ -1,9 +1,8 @@
-/// Loader defines the interface for loading a schema from a file or a string
-use log::debug;
 use std::collections::HashMap;
 use std::fs;
 
 use crate::schemas::TypedSchema;
+use crate::AnyOfSchema;
 use crate::ArraySchema;
 use crate::BoolOrTypedSchema;
 use crate::ConstSchema;
@@ -11,9 +10,11 @@ use crate::ConstValue;
 use crate::EnumSchema;
 use crate::Error;
 use crate::IntegerSchema;
+use crate::NotSchema;
 use crate::Number;
 use crate::NumberSchema;
 use crate::ObjectSchema;
+use crate::OneOfSchema;
 use crate::Result;
 use crate::RootSchema;
 use crate::StringSchema;
@@ -93,139 +94,79 @@ impl RootLoader {
         if let Some(schema) = hash.get(&schema_key) {
             self.meta_schema = Some(yaml_to_string(schema, "$schema value must be a string")?);
         }
-        self.schema = load_sub_schema(hash)?;
+        self.schema = Some(YamlSchema::construct(hash)?);
         Ok(())
     }
 }
 
-fn load_sub_schema(hash: &saphyr::Hash) -> Result<Option<YamlSchema>> {
-    let type_key = sys("type");
-    if hash.contains_key(&type_key) {
-        let value = hash.get(&type_key).unwrap();
-        match value {
-            saphyr::Yaml::String(s) => {
-                debug!("Loading type: {}", s);
-                match s.as_str() {
+impl Constructor<YamlSchema> for YamlSchema {
+    fn construct(hash: &saphyr::Hash) -> Result<YamlSchema> {
+        if hash.contains_key(&sys("type")) {
+            match TypedSchema::construct(hash) {
+                Ok(typed_schema) => Ok(typed_schema.into()),
+                Err(e) => Err(e),
+            }
+        } else if hash.contains_key(&sys("enum")) {
+            let enum_schema = EnumSchema::construct(hash)?;
+            return Ok(YamlSchema::Enum(enum_schema));
+        } else if hash.contains_key(&sys("const")) {
+            let const_schema = ConstSchema::construct(hash)?;
+            return Ok(YamlSchema::Const(const_schema));
+        } else if hash.contains_key(&sys("anyOf")) {
+            let any_of_schema = AnyOfSchema::construct(hash)?;
+            return Ok(YamlSchema::AnyOf(any_of_schema));
+        } else if hash.contains_key(&sys("oneOf")) {
+            let one_of_schema = OneOfSchema::construct(hash)?;
+            return Ok(YamlSchema::OneOf(one_of_schema));
+        } else if hash.contains_key(&sys("not")) {
+            let not_schema = NotSchema::construct(hash)?;
+            return Ok(YamlSchema::Not(not_schema));
+        } else {
+            unimplemented!()
+        }
+    }
+}
+
+impl Constructor<TypedSchema> for TypedSchema {
+    fn construct(hash: &saphyr::Hash) -> Result<TypedSchema> {
+        let type_key = saphyr::Yaml::String(String::from("type"));
+        if hash.contains_key(&type_key) {
+            let value = hash.get(&type_key).unwrap();
+            match value {
+                saphyr::Yaml::String(s) => match s.as_str() {
                     "array" => {
                         let array_schema = ArraySchema::construct(hash)?;
-                        return Ok(Some(YamlSchema::Array(array_schema)));
+                        Ok(TypedSchema::Array(array_schema))
                     }
-                    "boolean" => return Ok(Some(YamlSchema::BooleanSchema)),
-                    "enum" => {
-                        let enum_schema = EnumSchema::construct(hash)?;
-                        return Ok(Some(YamlSchema::Enum(enum_schema)));
-                    }
+                    "boolean" => Ok(TypedSchema::BooleanSchema),
                     "integer" => {
                         let integer_schema = IntegerSchema::construct(hash)?;
-                        return Ok(Some(YamlSchema::Integer(integer_schema)));
+                        Ok(TypedSchema::Integer(integer_schema))
                     }
                     "number" => {
                         let number_schema = NumberSchema::construct(hash)?;
-                        return Ok(Some(YamlSchema::Number(number_schema)));
+                        Ok(TypedSchema::Number(number_schema))
                     }
                     "object" => {
                         let object_schema = ObjectSchema::construct(hash)?;
-                        return Ok(Some(YamlSchema::Object(object_schema)));
+                        Ok(TypedSchema::Object(object_schema))
                     }
                     "string" => {
                         let string_schema = StringSchema::construct(hash)?;
-                        return Ok(Some(YamlSchema::String(string_schema)));
+                        Ok(TypedSchema::String(string_schema))
                     }
-                    _ => return Err(unsupported_type!(s.to_string())),
-                }
-            }
-            saphyr::Yaml::Null => {
-                return Ok(Some(YamlSchema::TypeNull));
-            }
-            _ => unimplemented!(),
-        }
-    } else {
-        let enum_key = sys("enum");
-        if hash.contains_key(&enum_key) {
-            let value = hash.get(&enum_key).unwrap();
-            match value {
-                saphyr::Yaml::Array(array) => {
-                    let enum_values = array
-                        .iter()
-                        .map(|v| match v {
-                            saphyr::Yaml::String(s) => Ok(ConstValue::string(s)),
-                            saphyr::Yaml::Integer(i) => Ok(ConstValue::integer(*i)),
-                            saphyr::Yaml::Real(s) => {
-                                let f = s.parse::<f64>()?;
-                                Ok(ConstValue::float(f))
-                            }
-                            saphyr::Yaml::Null => Ok(ConstValue::null()),
-                            _ => unimplemented!(),
-                        })
-                        .collect::<Result<Vec<ConstValue>>>()?;
-                    return Ok(Some(YamlSchema::Enum(EnumSchema {
-                        r#enum: enum_values,
-                    })));
-                }
-                _ => unimplemented!(),
+                    s => Err(unsupported_type!(s.to_string())),
+                },
+                saphyr::Yaml::Null => Ok(TypedSchema::Null),
+                v => Err(unsupported_type!(
+                    "Expected type: string, but got: {:#?}",
+                    v
+                )),
             }
         } else {
-            let const_key = sys("const");
-            if hash.contains_key(&const_key) {
-                let value = hash.get(&const_key).unwrap();
-                match value {
-                    saphyr::Yaml::String(s) => {
-                        return Ok(Some(YamlSchema::Const(ConstSchema {
-                            r#const: ConstValue::string(s),
-                        })));
-                    }
-                    saphyr::Yaml::Integer(i) => {
-                        return Ok(Some(YamlSchema::Const(ConstSchema {
-                            r#const: ConstValue::integer(*i),
-                        })));
-                    }
-                    saphyr::Yaml::Real(s) => {
-                        let f = s.parse::<f64>()?;
-                        return Ok(Some(YamlSchema::Const(ConstSchema {
-                            r#const: ConstValue::float(f),
-                        })));
-                    }
-                    _ => unimplemented!(),
-                }
-            }
+            generic_error!("No type key found in hash: {:#?}", hash)
         }
     }
-    Ok(None)
-}
-
-fn load_typed_schema(hash: &saphyr::Hash) -> Result<Option<TypedSchema>> {
-    let type_key = saphyr::Yaml::String(String::from("type"));
-    if hash.contains_key(&type_key) {
-        let value = hash.get(&type_key).unwrap();
-        match value {
-            saphyr::Yaml::String(s) => match s.as_str() {
-                "array" => {
-                    let array_schema = ArraySchema::construct(hash)?;
-                    return Ok(Some(TypedSchema::Array(array_schema)));
-                }
-                "boolean" => return Ok(Some(TypedSchema::BooleanSchema)),
-                "integer" => {
-                    let integer_schema = IntegerSchema::construct(hash)?;
-                    return Ok(Some(TypedSchema::Integer(integer_schema)));
-                }
-                "number" => {
-                    let number_schema = NumberSchema::construct(hash)?;
-                    return Ok(Some(TypedSchema::Number(number_schema)));
-                }
-                "object" => {
-                    let object_schema = ObjectSchema::construct(hash)?;
-                    return Ok(Some(TypedSchema::Object(object_schema)));
-                }
-                "string" => {
-                    let string_schema = StringSchema::construct(hash)?;
-                    return Ok(Some(TypedSchema::String(string_schema)));
-                }
-                _ => unimplemented!(),
-            },
-            _ => unimplemented!(),
-        }
-    }
-    Ok(None)
 }
 
 /// A Constructor constructs an object (a schema) from a saphyr::Hash
@@ -250,7 +191,7 @@ impl Constructor<ArraySchema> for ArraySchema {
             if let saphyr::Yaml::String(key) = key {
                 match key.as_str() {
                     "contains" => {
-                        let yaml_schema = load_sub_schema(value.as_hash().unwrap())?.unwrap();
+                        let yaml_schema = YamlSchema::construct(value.as_hash().unwrap())?;
                         array_schema.contains = Some(Box::new(yaml_schema));
                     }
                     "items" => {
@@ -265,13 +206,7 @@ impl Constructor<ArraySchema> for ArraySchema {
                         }
                     }
                     "prefixItems" => {
-                        if !value.is_array() {
-                            return Err(unsupported_type!(
-                                "Expected type: array, but got: {:?}",
-                                value
-                            ));
-                        }
-                        let prefix_items = load_prefix_items(value.as_vec().unwrap())?;
+                        let prefix_items = load_array_of_schemas(value)?;
                         array_schema.prefix_items = Some(prefix_items);
                     }
                     _ => unimplemented!(),
@@ -279,6 +214,28 @@ impl Constructor<ArraySchema> for ArraySchema {
             }
         }
         Ok(array_schema)
+    }
+}
+
+impl Constructor<ConstSchema> for ConstSchema {
+    fn construct(hash: &saphyr::Hash) -> Result<ConstSchema> {
+        let const_key = sys("const");
+        let value = hash.get(&const_key).unwrap();
+        match value {
+            saphyr::Yaml::String(s) => Ok(ConstSchema {
+                r#const: ConstValue::string(s),
+            }),
+            saphyr::Yaml::Integer(i) => Ok(ConstSchema {
+                r#const: ConstValue::integer(*i),
+            }),
+            saphyr::Yaml::Real(s) => {
+                let f = s.parse::<f64>()?;
+                Ok(ConstSchema {
+                    r#const: ConstValue::float(f),
+                })
+            }
+            _ => unimplemented!(),
+        }
     }
 }
 
@@ -306,7 +263,10 @@ impl Constructor<IntegerSchema> for IntegerSchema {
                     "type" => {
                         let s = load_string_value(value)?;
                         if s != "integer" {
-                            return Err(unsupported_type!("Expected type: integer, but got: {}", s));
+                            return Err(unsupported_type!(
+                                "Expected type: integer, but got: {}",
+                                s
+                            ));
                         }
                     }
                     _ => unimplemented!(),
@@ -314,6 +274,22 @@ impl Constructor<IntegerSchema> for IntegerSchema {
             }
         }
         Ok(integer_schema)
+    }
+}
+
+impl Constructor<EnumSchema> for EnumSchema {
+    fn construct(hash: &saphyr::Hash) -> Result<EnumSchema> {
+        let enum_key = sys("enum");
+        let value = hash.get(&enum_key).unwrap();
+        match value {
+            saphyr::Yaml::Array(values) => {
+                let enum_values = load_enum_values(values)?;
+                Ok(EnumSchema {
+                    r#enum: enum_values,
+                })
+            }
+            v => generic_error!("enum: Expected an array, but got: {:#?}", v),
+        }
     }
 }
 
@@ -392,12 +368,58 @@ impl Constructor<ObjectSchema> for ObjectSchema {
     }
 }
 
+fn load_array_of_schemas(value: &saphyr::Yaml) -> Result<Vec<YamlSchema>> {
+    match value {
+        saphyr::Yaml::Array(values) => values
+            .iter()
+            .map(|v| match v {
+                saphyr::Yaml::Hash(hash) => YamlSchema::construct(hash),
+                _ => unimplemented!(),
+            })
+            .collect::<Result<Vec<YamlSchema>>>(),
+        _ => unimplemented!(),
+    }
+}
+
+impl Constructor<AnyOfSchema> for AnyOfSchema {
+    fn construct(hash: &saphyr::Hash) -> Result<AnyOfSchema> {
+        let mut any_of_schema = AnyOfSchema::default();
+        for (key, value) in hash.iter() {
+            if let saphyr::Yaml::String(key) = key {
+                match key.as_str() {
+                    "anyOf" => {
+                        any_of_schema.any_of = load_array_of_schemas(value)?;
+                    }
+                    _ => unimplemented!(),
+                }
+            }
+        }
+        Ok(any_of_schema)
+    }
+}
+
+impl Constructor<OneOfSchema> for OneOfSchema {
+    fn construct(hash: &saphyr::Hash) -> Result<OneOfSchema> {
+        let mut one_of_schema = OneOfSchema::default();
+        for (key, value) in hash.iter() {
+            if let saphyr::Yaml::String(key) = key {
+                match key.as_str() {
+                    "oneOf" => {
+                        one_of_schema.one_of = load_array_of_schemas(value)?;
+                    }
+                    _ => unimplemented!(),
+                }
+            }
+        }
+        Ok(one_of_schema)
+    }
+}
 
 fn load_properties(hash: &saphyr::Hash) -> Result<HashMap<String, YamlSchema>> {
     let mut properties = HashMap::new();
     for (key, value) in hash.iter() {
         if let saphyr::Yaml::String(key) = key {
-            let schema = load_sub_schema(value.as_hash().unwrap())?.unwrap();
+            let schema = YamlSchema::construct(value.as_hash().unwrap())?;
             properties.insert(key.clone(), schema);
         } else {
             return Err(unsupported_type!(
@@ -413,7 +435,7 @@ fn load_additional_properties(value: &saphyr::Yaml) -> Result<BoolOrTypedSchema>
     match value {
         saphyr::Yaml::Boolean(b) => Ok(BoolOrTypedSchema::Boolean(*b)),
         saphyr::Yaml::Hash(hash) => {
-            let schema = load_typed_schema(hash)?.unwrap();
+            let schema = TypedSchema::construct(hash)?;
             Ok(BoolOrTypedSchema::TypedSchema(Box::new(schema)))
         }
         _ => Err(unsupported_type!(
@@ -423,10 +445,32 @@ fn load_additional_properties(value: &saphyr::Yaml) -> Result<BoolOrTypedSchema>
     }
 }
 
+impl Constructor<NotSchema> for NotSchema {
+    fn construct(hash: &saphyr::Hash) -> Result<NotSchema> {
+        for (key, value) in hash.iter() {
+            if let saphyr::Yaml::String(key) = key {
+                match key.as_str() {
+                    "not" => {
+                        let schema = YamlSchema::construct(value.as_hash().unwrap())?;
+                        return Ok(NotSchema {
+                            not: Box::new(schema),
+                        });
+                    }
+                    _ => unimplemented!(),
+                }
+            }
+        }
+        unimplemented!()
+    }
+}
+
 fn load_integer(value: &saphyr::Yaml) -> Result<i64> {
     match value {
         saphyr::Yaml::Integer(i) => Ok(*i),
-        _ => Err(unsupported_type!("Expected type: integer, but got: {:?}", value)),
+        _ => Err(unsupported_type!(
+            "Expected type: integer, but got: {:?}",
+            value
+        )),
     }
 }
 
@@ -533,58 +577,18 @@ impl Constructor<StringSchema> for StringSchema {
     }
 }
 
-impl Constructor<EnumSchema> for EnumSchema {
-    fn construct(hash: &saphyr::Hash) -> Result<EnumSchema> {
-        for (key, value) in hash.iter() {
-            if let saphyr::Yaml::String(key) = key {
-                match key.as_str() {
-                    "enum" => {
-                        let enum_values = load_enum_values(value.as_vec().unwrap())?;
-                        return Ok(EnumSchema {
-                            r#enum: enum_values,
-                        });
-                    }
-                    _ => unimplemented!(),
-                }
-            }
-        }
-        unimplemented!()
-    }
-}
-
 fn load_array_items(value: &saphyr::Yaml) -> Result<BoolOrTypedSchema> {
     match value {
         saphyr::Yaml::Boolean(b) => Ok(BoolOrTypedSchema::Boolean(*b)),
         saphyr::Yaml::Hash(hash) => Ok(BoolOrTypedSchema::TypedSchema(Box::new(
-            load_typed_schema(hash)?.unwrap(),
+            TypedSchema::construct(hash)?,
         ))),
         _ => unimplemented!(),
     }
 }
 
-fn load_prefix_items(values: &Vec<saphyr::Yaml>) -> Result<Vec<Box<YamlSchema>>> {
-    values
-        .iter()
-        .map(|v| {
-            if !v.is_hash() {
-                return Err(unsupported_type!("Expected type: hash, but got: {:?}", v));
-            }
-            let hash = v.as_hash().unwrap();
-            let sub_schema = match load_sub_schema(hash) {
-                Ok(Some(sub_schema)) => sub_schema,
-                Ok(None) => return Err(unsupported_type!("Expected type: hash, but got: {:?}", v)),
-                Err(e) => return Err(e),
-            };
-            Ok(Box::new(sub_schema))
-        })
-        .collect()
-}
-
 fn load_enum_values(values: &Vec<saphyr::Yaml>) -> Result<Vec<ConstValue>> {
-    Ok(values
-        .iter()
-        .map(|v| ConstValue::from_saphyr_yaml(v))
-        .collect())
+    Ok(values.iter().map(ConstValue::from_saphyr_yaml).collect())
 }
 
 /// Convert a Loader to a RootSchema
@@ -722,7 +726,7 @@ mod tests {
         )
         .unwrap();
         let root_schema = load_from_doc(docs.first().unwrap()).unwrap();
-        let enum_values = vec!["foo", "bar", "baz"]
+        let enum_values = ["foo", "bar", "baz"]
             .iter()
             .map(|s| ConstValue::string(s.to_string()))
             .collect();
