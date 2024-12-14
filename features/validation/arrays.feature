@@ -78,7 +78,7 @@ Feature: Arrays
       - Avenue
       - NW
       ```
-    # "Drive" is not one of the acceptable street types 
+    # "Drive" is not one of the acceptable street types
     But it should NOT accept:
       ```
       - 24
@@ -169,7 +169,7 @@ Feature: Arrays
         type: string
       ```
     # Extra string items are ok
-    And it should accept:
+    Then it should accept:
       ```
       - 1600
       - Pennsylvania

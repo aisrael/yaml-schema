@@ -1,13 +1,16 @@
+use crate::Number;
 use log::debug;
 
-use super::Validator;
+use crate::ConstValue;
 use crate::Context;
 use crate::Result;
+
+use super::Validator;
 
 /// A const schema represents a constant value
 #[derive(Debug, PartialEq)]
 pub struct ConstSchema {
-    pub r#const: serde_yaml::Value,
+    pub r#const: ConstValue,
 }
 
 impl std::fmt::Display for ConstSchema {
@@ -23,12 +26,68 @@ impl Validator for ConstSchema {
             value, self.r#const
         );
         let expected_value = &self.r#const;
-        if expected_value != value {
-            let error = format!(
-                "Const validation failed, expected: {:?}, got: {:?}",
-                expected_value, value
-            );
-            context.add_error(error);
+        match expected_value {
+            ConstValue::Boolean(b) => {
+                if value.as_bool() != Some(*b) {
+                    let error = format!(
+                        "Const validation failed, expected: {:?}, got: {:?}",
+                        b, value
+                    );
+                    context.add_error(error);
+                }
+            }
+            ConstValue::Null => {
+                if !value.is_null() {
+                    let error =
+                        format!("Const validation failed, expected: null, got: {:?}", value);
+                    context.add_error(error);
+                }
+            }
+            ConstValue::Number(n) => match n {
+                Number::Integer(i) => {
+                    if value.is_i64() {
+                        if value.as_i64() != Some(*i) {
+                            let error = format!(
+                                "Const validation failed, expected: {:?}, got: {:?}",
+                                i, value
+                            );
+                            context.add_error(error);
+                        }
+                    } else {
+                        let error = format!(
+                            "Const validation failed, expected: {:?}, got: {:?}",
+                            i, value
+                        );
+                        context.add_error(error);
+                    }
+                }
+                Number::Float(f) => {
+                    if value.is_f64() {
+                        if value.as_f64() != Some(*f) {
+                            let error = format!(
+                                "Const validation failed, expected: {:?}, got: {:?}",
+                                f, value
+                            );
+                            context.add_error(error);
+                        }
+                    } else {
+                        let error = format!(
+                            "Const validation failed, expected: {:?}, got: {:?}",
+                            f, value
+                        );
+                        context.add_error(error);
+                    }
+                }
+            },
+            ConstValue::String(s) => {
+                if value.as_str() != Some(s) {
+                    let error = format!(
+                        "Const validation failed, expected: {:?}, got: {:?}",
+                        s, value
+                    );
+                    context.add_error(error);
+                }
+            }
         }
         Ok(())
     }

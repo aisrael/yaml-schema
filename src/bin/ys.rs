@@ -3,11 +3,9 @@ use clap::Subcommand;
 use eyre::Context;
 use eyre::Result;
 
-use yaml_schema::deser;
-use yaml_schema::deser::Deser;
 use yaml_schema::version;
 use yaml_schema::Engine;
-use yaml_schema::YamlSchema;
+use yaml_schema::RootSchema;
 
 #[derive(Parser, Debug, Default)]
 #[command(name = "ys")]
@@ -66,24 +64,14 @@ fn command_validate(opts: Opts) -> Result<i32> {
         return Err(eyre::eyre!("No schema file(s) specified"));
     }
     let schema_filename = opts.schemas.first().unwrap();
-    let schema_file = std::fs::File::open(schema_filename)
-        .wrap_err_with(|| format!("Failed to open schema file: {}", schema_filename))?;
-    let deserialized_representation: deser::YamlSchema = serde_yaml::from_reader(schema_file)
+    let root_schema = RootSchema::load_file(schema_filename)
         .wrap_err_with(|| format!("Failed to read YAML schema file: {}", schema_filename))?;
-    let schema: YamlSchema = deserialized_representation
-        .deserialize()
-        .wrap_err_with(|| {
-            format!(
-                "Failed to deserialize schema file to a YamlSchema model: {}",
-                schema_filename
-            )
-        })?;
 
     if opts.file.is_none() {
         return Err(eyre::eyre!("No YAML file specified"));
     }
 
-    let engine = Engine::new(&schema);
+    let engine = Engine::new(&root_schema.schema);
     let yaml_filename = opts.file.as_ref().unwrap();
     let yaml_file = std::fs::File::open(yaml_filename)
         .wrap_err_with(|| format!("Failed to open YAML file: {}", yaml_filename))?;

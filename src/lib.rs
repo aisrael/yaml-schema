@@ -1,10 +1,9 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
-pub mod deser;
 pub mod engine;
 #[macro_use]
 pub mod error;
+pub mod loader;
 pub mod schemas;
 pub mod validation;
 
@@ -34,6 +33,38 @@ pub fn version() -> String {
 // Alias for std::result::Result<T, yaml_schema::Error>
 pub type Result<T> = std::result::Result<T, Error>;
 
+/// A RootSchema is a YamlSchema document
+#[derive(Debug, Default)]
+pub struct RootSchema {
+    pub id: Option<String>,
+    pub meta_schema: Option<String>,
+    pub schema: YamlSchema,
+}
+
+impl RootSchema {
+    /// Create a new RootSchema with a YamlSchema::Empty
+    pub fn new(schema: YamlSchema) -> RootSchema {
+        RootSchema {
+            id: None,
+            meta_schema: None,
+            schema,
+        }
+    }
+
+    /// Load a RootSchema from a file
+    pub fn load_file(path: &str) -> Result<RootSchema> {
+        loader::load_file(path)
+    }
+
+    pub fn load_from_str(schema: &str) -> Result<RootSchema> {
+        let docs = saphyr::Yaml::load_from_str(schema)?;
+        if docs.is_empty() {
+            return Ok(RootSchema::new(YamlSchema::Empty)); // empty schema
+        }
+        loader::load_from_doc(docs.first().unwrap())
+    }
+}
+
 /// A Number is either an integer or a float
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 #[serde(untagged)]
@@ -52,6 +83,16 @@ impl Number {
     pub fn float(value: f64) -> Number {
         Number::Float(value)
     }
+
+    fn from_serde_yaml_number(value: &serde_yaml::Number) -> Self {
+        if value.is_i64() {
+            Number::Integer(value.as_i64().unwrap())
+        } else if value.is_f64() {
+            return Number::Float(value.as_f64().unwrap());
+        } else {
+            panic!("Expected an integer or float, but got: {:?}", value);
+        }
+    }
 }
 
 impl std::fmt::Display for Number {
@@ -59,6 +100,62 @@ impl std::fmt::Display for Number {
         match self {
             Number::Integer(v) => write!(f, "{}", v),
             Number::Float(v) => write!(f, "{}", v),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub enum ConstValue {
+    Boolean(bool),
+    Null,
+    Number(Number),
+    String(String),
+}
+
+impl ConstValue {
+    pub fn boolean(value: bool) -> ConstValue {
+        ConstValue::Boolean(value)
+    }
+    pub fn integer(value: i64) -> ConstValue {
+        ConstValue::Number(Number::integer(value))
+    }
+    pub fn float(value: f64) -> ConstValue {
+        ConstValue::Number(Number::float(value))
+    }
+    pub fn null() -> ConstValue {
+        ConstValue::Null
+    }
+    pub fn string<V: Into<String>>(value: V) -> ConstValue {
+        ConstValue::String(value.into())
+    }
+    pub fn from_saphyr_yaml(value: &saphyr::Yaml) -> ConstValue {
+        match value {
+            saphyr::Yaml::Boolean(b) => ConstValue::Boolean(*b),
+            saphyr::Yaml::Integer(i) => ConstValue::Number(Number::integer(*i)),
+            saphyr::Yaml::Real(s) => ConstValue::Number(Number::float(s.parse::<f64>().unwrap())),
+            saphyr::Yaml::String(s) => ConstValue::String(s.clone()),
+            saphyr::Yaml::Null => ConstValue::Null,
+            _ => panic!("Expected a constant value, but got: {:?}", value),
+        }
+    }
+    pub fn from_serde_yaml_value(value: &serde_yaml::Value) -> ConstValue {
+        match value {
+            serde_yaml::Value::Bool(b) => ConstValue::Boolean(*b),
+            serde_yaml::Value::Number(n) => ConstValue::Number(Number::from_serde_yaml_number(n)),
+            serde_yaml::Value::String(s) => ConstValue::String(s.clone()),
+            serde_yaml::Value::Null => ConstValue::Null,
+            _ => panic!("Expected a constant value, but got: {:?}", value),
+        }
+    }
+}
+
+impl std::fmt::Display for ConstValue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ConstValue::Boolean(b) => write!(f, "const: {}", b),
+            ConstValue::Null => write!(f, "const: null"),
+            ConstValue::Number(n) => write!(f, "const: {}", n),
+            ConstValue::String(s) => write!(f, "const: {}", s),
         }
     }
 }
@@ -116,6 +213,8 @@ impl std::fmt::Display for YamlSchema {
     }
 }
 
+/// Converts (upcast) a TypedSchema to a YamlSchema
+/// Since a YamlSchema is a superset of a TypedSchema, this is a lossless conversion
 impl From<TypedSchema> for YamlSchema {
     fn from(schema: TypedSchema) -> Self {
         match schema {
@@ -128,26 +227,6 @@ impl From<TypedSchema> for YamlSchema {
             TypedSchema::String(string_schema) => YamlSchema::String(string_schema),
         }
     }
-}
-
-impl From<deser::EnumSchema> for EnumSchema {
-    fn from(deserialized: deser::EnumSchema) -> Self {
-        EnumSchema {
-            r#enum: deserialized.r#enum,
-        }
-    }
-}
-
-/// Formats a map of values as a string, by joining them with commas
-fn format_map<V>(map: &HashMap<String, V>) -> String
-where
-    V: std::fmt::Display,
-{
-    let items: Vec<String> = map
-        .iter()
-        .map(|(k, v)| format!("\"{}\": {}", k, v))
-        .collect();
-    format!("{{ {} }}", items.join(", "))
 }
 
 /// Formats a vector of values as a string, by joining them with commas
@@ -167,5 +246,25 @@ fn format_serde_yaml_value(value: &serde_yaml::Value) -> String {
         serde_yaml::Value::Number(n) => n.to_string(),
         serde_yaml::Value::String(s) => format!("\"{}\"", s),
         _ => format!("{:?}", value),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_const_value_from_serde_yaml_value() {
+        let yaml = serde_yaml::Value::Bool(true);
+        let const_value = ConstValue::from_serde_yaml_value(&yaml);
+        assert_eq!(const_value, ConstValue::Boolean(true));
+
+        let yaml = serde_yaml::Value::Number(42.into());
+        let const_value = ConstValue::from_serde_yaml_value(&yaml);
+        assert_eq!(const_value, ConstValue::Number(Number::integer(42)));
+
+        let yaml = serde_yaml::Value::String("Drive".to_string());
+        let const_value = ConstValue::from_serde_yaml_value(&yaml);
+        assert_eq!(const_value, ConstValue::String("Drive".to_string()));
     }
 }

@@ -11,13 +11,17 @@ use super::BoolOrTypedSchema;
 #[derive(Debug, Default, PartialEq)]
 pub struct ArraySchema {
     pub items: Option<BoolOrTypedSchema>,
-    pub prefix_items: Option<Vec<Box<YamlSchema>>>,
+    pub prefix_items: Option<Vec<YamlSchema>>,
     pub contains: Option<Box<YamlSchema>>,
 }
 
 impl std::fmt::Display for ArraySchema {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Array {:?}", self)
+        write!(
+            f,
+            "Array{{ items: {:?}, prefix_items: {:?}, contains: {:?}}}",
+            self.items, self.prefix_items, self.contains
+        )
     }
 }
 

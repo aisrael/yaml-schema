@@ -1,6 +1,6 @@
 Feature: Numeric types
 
-  Scenario: integer
+  Scenario: integer ZZZ
     Given a YAML schema:
       ```
       type: integer
