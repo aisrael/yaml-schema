@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::fs;
 
-use crate::schemas::TypedSchema;
 use crate::AnyOfSchema;
 use crate::ArraySchema;
 use crate::BoolOrTypedSchema;
@@ -18,6 +17,7 @@ use crate::OneOfSchema;
 use crate::Result;
 use crate::RootSchema;
 use crate::StringSchema;
+use crate::TypedSchema;
 use crate::YamlSchema;
 
 pub fn load_file<S: Into<String>>(path: S) -> Result<RootSchema> {
@@ -54,12 +54,10 @@ pub fn load_from_doc(doc: &saphyr::Yaml) -> Result<RootSchema> {
                 loader.set_schema(YamlSchema::BooleanLiteral(false));
             }
             s => {
-                println!("s: {:#?}", s);
                 unimplemented!()
             }
         },
         _ => {
-            println!("doc: {:#?}", doc);
             unimplemented!()
         }
     }
@@ -196,7 +194,6 @@ impl Constructor<ArraySchema> for ArraySchema {
                     }
                     "items" => {
                         let array_items = load_array_items(value)?;
-                        println!("array_items: {:#?}", array_items);
                         array_schema.items = Some(array_items);
                     }
                     "type" => {
@@ -301,12 +298,10 @@ impl Constructor<ObjectSchema> for ObjectSchema {
                 match key.as_str() {
                     "properties" => {
                         let properties = load_properties(value.as_hash().unwrap())?;
-                        println!("properties: {:#?}", properties);
                         object_schema.properties = Some(properties);
                     }
                     "additionalProperties" => {
                         let additional_properties = load_additional_properties(value)?;
-                        println!("additional_properties: {:#?}", additional_properties);
                         object_schema.additional_properties = Some(additional_properties);
                     }
                     "minProperties" => {
@@ -317,7 +312,6 @@ impl Constructor<ObjectSchema> for ObjectSchema {
                     }
                     "patternProperties" => {
                         let pattern_properties = load_properties(value.as_hash().unwrap())?;
-                        println!("pattern_properties: {:#?}", pattern_properties);
                         object_schema.pattern_properties = Some(pattern_properties);
                     }
                     "propertyNames" => {
@@ -617,7 +611,6 @@ fn sys(str: &str) -> saphyr::Yaml {
 
 #[cfg(test)]
 mod tests {
-
     use regex::Regex;
 
     use super::*;
