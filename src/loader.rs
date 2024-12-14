@@ -53,9 +53,7 @@ pub fn load_from_doc(doc: &saphyr::Yaml) -> Result<RootSchema> {
             "false" => {
                 loader.set_schema(YamlSchema::BooleanLiteral(false));
             }
-            s => {
-                unimplemented!()
-            }
+            s => return generic_error!("Expected true or false, but got: {}", s),
         },
         _ => {
             unimplemented!()
