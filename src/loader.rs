@@ -53,7 +53,7 @@ pub fn load_from_doc(doc: &saphyr::Yaml) -> Result<RootSchema> {
             "false" => {
                 loader.set_schema(YamlSchema::BooleanLiteral(false));
             }
-            s => return generic_error!("Expected true or false, but got: {}", s),
+            s => return Err(generic_error!("Expected true or false, but got: {}", s)),
         },
         _ => {
             unimplemented!()
@@ -160,7 +160,7 @@ impl Constructor<TypedSchema> for TypedSchema {
                 )),
             }
         } else {
-            generic_error!("No type key found in hash: {:#?}", hash)
+            Err(generic_error!("No type key found in hash: {:#?}", hash))
         }
     }
 }
@@ -283,7 +283,7 @@ impl Constructor<EnumSchema> for EnumSchema {
                     r#enum: enum_values,
                 })
             }
-            v => generic_error!("enum: Expected an array, but got: {:#?}", v),
+            v => Err(generic_error!("enum: Expected an array, but got: {:#?}", v)),
         }
     }
 }

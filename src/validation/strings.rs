@@ -7,22 +7,18 @@ use super::Validator;
 
 impl Validator for StringSchema {
     fn validate(&self, context: &Context, value: &serde_yaml::Value) -> Result<()> {
-        match validate_string(
+        let errors = validate_string(
             self.min_length,
             self.max_length,
             self.pattern.as_ref(),
             value,
-        ) {
-            Ok(errors) => {
-                if !errors.is_empty() {
-                    for error in errors {
-                        context.add_error(error);
-                    }
-                }
-                Ok(())
+        );
+        if !errors.is_empty() {
+            for error in errors {
+                context.add_error(error);
             }
-            Err(e) => generic_error!("{}", e),
         }
+        Ok(())
     }
 }
 
@@ -32,13 +28,13 @@ pub fn validate_string(
     max_length: Option<usize>,
     pattern: Option<&Regex>,
     value: &serde_yaml::Value,
-) -> Result<Vec<String>> {
+) -> Vec<String> {
     let mut errors = Vec::new();
     let yaml_string = match value.as_str() {
         Some(s) => s,
         None => {
             errors.push(format!("Expected a string, but got: {:?}", value));
-            return Ok(errors);
+            return errors;
         }
     };
     if let Some(min_length) = min_length {
@@ -59,5 +55,5 @@ pub fn validate_string(
             ));
         }
     }
-    Ok(errors)
+    errors
 }
