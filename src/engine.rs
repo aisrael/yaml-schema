@@ -5,7 +5,6 @@ use crate::validation::Context;
 use crate::Error;
 use crate::Result;
 use crate::RootSchema;
-use crate::Validator;
 use crate::YamlSchema;
 
 #[derive(Debug)]
@@ -53,7 +52,7 @@ impl<'a> Engine<'a> {
             let yaml = docs.first().unwrap();
             engine
                 .root_schema
-                .validate(&mut engine.context.borrow_mut(), yaml)?;
+                .validate(&engine.context.borrow(), yaml)?;
         }
         Ok(engine.context.take())
     }
