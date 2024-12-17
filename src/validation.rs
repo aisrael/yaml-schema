@@ -11,7 +11,7 @@ use crate::YamlSchema;
 pub use context::Context;
 use log::debug;
 
-/// A trait for validating a value against a schema
+/// A trait for validating a sahpyr::Yaml value against a schema
 pub trait Validator {
     fn validate(&self, context: &Context, value: &saphyr::Yaml) -> Result<()>;
 }
