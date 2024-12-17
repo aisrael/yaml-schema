@@ -60,7 +60,32 @@ pub fn validate_string(
 
 #[cfg(test)]
 mod tests {
+    use crate::Engine;
+    use crate::RootSchema;
+    use crate::YamlSchema;
+
     use super::*;
+
+    #[test]
+    fn test_engine_validate_string() {
+        let schema = StringSchema::default();
+        let root_schema = RootSchema::new(YamlSchema::String(schema));
+        let context = Engine::evaluate(&root_schema, "some string", false).unwrap();
+        assert!(!context.has_errors());
+    }
+
+    #[test]
+    fn test_engine_validate_string_with_min_length() {
+        let schema = StringSchema {
+            min_length: Some(5),
+            ..Default::default()
+        };
+        let root_schema = RootSchema::new(YamlSchema::String(schema));
+        let context = Engine::evaluate(&root_schema, "hello", false).unwrap();
+        assert!(!context.has_errors());
+        let context = Engine::evaluate(&root_schema, "hell", false).unwrap();
+        assert!(context.has_errors());
+    }
 
     #[test]
     fn test_validate_string() {
