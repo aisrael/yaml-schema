@@ -245,7 +245,7 @@ where
 }
 
 /// Formats a saphyr::Yaml as a string
-fn format_serde_yaml_value(value: &saphyr::Yaml) -> String {
+fn format_saphyr_yaml_value(value: &saphyr::Yaml) -> String {
     match value {
         saphyr::Yaml::Null => "null".to_string(),
         saphyr::Yaml::Boolean(b) => b.to_string(),

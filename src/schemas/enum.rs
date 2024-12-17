@@ -1,6 +1,6 @@
 use log::debug;
 
-use crate::format_serde_yaml_value;
+use crate::format_saphyr_yaml_value;
 use crate::format_vec;
 use crate::ConstValue;
 use crate::Context;
@@ -32,7 +32,7 @@ impl Validator for EnumSchema {
             }
         }
         if !self.r#enum.contains(&const_value) {
-            let value_str = format_serde_yaml_value(value);
+            let value_str = format_saphyr_yaml_value(value);
             let enum_values = self
                 .r#enum
                 .iter()
