@@ -20,11 +20,17 @@ impl std::fmt::Display for EnumSchema {
 }
 
 impl Validator for EnumSchema {
-    fn validate(&self, context: &Context, value: &serde_yaml::Value) -> Result<()> {
+    fn validate(&self, context: &Context, value: &saphyr::Yaml) -> Result<()> {
         debug!("[EnumSchema] self: {}", self);
         debug!("[EnumSchema] Validating value: {:?}", value);
-        let const_value = ConstValue::from_serde_yaml_value(value);
+        let const_value = ConstValue::from_saphyr_yaml(value);
         debug!("[EnumSchema] const_value: {}", const_value);
+        for value in &self.r#enum {
+            debug!("[EnumSchema] value: {}", value);
+            if value.eq(&const_value) {
+                return Ok(());
+            }
+        }
         if !self.r#enum.contains(&const_value) {
             let value_str = format_serde_yaml_value(value);
             let enum_values = self
@@ -38,5 +44,21 @@ impl Validator for EnumSchema {
             context.add_error(error);
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_enum_schema() {
+        let schema = EnumSchema {
+            r#enum: vec![ConstValue::String("NW".to_string())],
+        };
+        let value = saphyr::Yaml::String("NW".to_string());
+        let context = Context::default();
+        let result = schema.validate(&context, &value);
+        assert!(result.is_ok());
     }
 }

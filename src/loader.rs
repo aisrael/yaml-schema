@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::fs;
+use std::rc::Rc;
 
-use crate::schemas::TypedSchema;
 use crate::AnyOfSchema;
 use crate::ArraySchema;
 use crate::BoolOrTypedSchema;
@@ -18,6 +18,7 @@ use crate::OneOfSchema;
 use crate::Result;
 use crate::RootSchema;
 use crate::StringSchema;
+use crate::TypedSchema;
 use crate::YamlSchema;
 
 pub fn load_file<S: Into<String>>(path: S) -> Result<RootSchema> {
@@ -53,13 +54,9 @@ pub fn load_from_doc(doc: &saphyr::Yaml) -> Result<RootSchema> {
             "false" => {
                 loader.set_schema(YamlSchema::BooleanLiteral(false));
             }
-            s => {
-                println!("s: {:#?}", s);
-                unimplemented!()
-            }
+            s => return Err(generic_error!("Expected true or false, but got: {}", s)),
         },
         _ => {
-            println!("doc: {:#?}", doc);
             unimplemented!()
         }
     }
@@ -164,13 +161,13 @@ impl Constructor<TypedSchema> for TypedSchema {
                 )),
             }
         } else {
-            generic_error!("No type key found in hash: {:#?}", hash)
+            Err(generic_error!("No type key found in hash: {:#?}", hash))
         }
     }
 }
 
 /// A Constructor constructs an object (a schema) from a saphyr::Hash
-trait Constructor<T> {
+pub trait Constructor<T> {
     fn construct(hash: &saphyr::Hash) -> Result<T>;
 }
 
@@ -196,7 +193,6 @@ impl Constructor<ArraySchema> for ArraySchema {
                     }
                     "items" => {
                         let array_items = load_array_items(value)?;
-                        println!("array_items: {:#?}", array_items);
                         array_schema.items = Some(array_items);
                     }
                     "type" => {
@@ -288,7 +284,7 @@ impl Constructor<EnumSchema> for EnumSchema {
                     r#enum: enum_values,
                 })
             }
-            v => generic_error!("enum: Expected an array, but got: {:#?}", v),
+            v => Err(generic_error!("enum: Expected an array, but got: {:#?}", v)),
         }
     }
 }
@@ -301,12 +297,10 @@ impl Constructor<ObjectSchema> for ObjectSchema {
                 match key.as_str() {
                     "properties" => {
                         let properties = load_properties(value.as_hash().unwrap())?;
-                        println!("properties: {:#?}", properties);
                         object_schema.properties = Some(properties);
                     }
                     "additionalProperties" => {
                         let additional_properties = load_additional_properties(value)?;
-                        println!("additional_properties: {:#?}", additional_properties);
                         object_schema.additional_properties = Some(additional_properties);
                     }
                     "minProperties" => {
@@ -317,7 +311,6 @@ impl Constructor<ObjectSchema> for ObjectSchema {
                     }
                     "patternProperties" => {
                         let pattern_properties = load_properties(value.as_hash().unwrap())?;
-                        println!("pattern_properties: {:#?}", pattern_properties);
                         object_schema.pattern_properties = Some(pattern_properties);
                     }
                     "propertyNames" => {
@@ -598,7 +591,7 @@ impl From<RootLoader> for RootSchema {
         RootSchema {
             id: loader.id,
             meta_schema: loader.meta_schema,
-            schema: loader.schema.unwrap_or(YamlSchema::Empty),
+            schema: Rc::new(loader.schema.unwrap_or(YamlSchema::Empty)),
         }
     }
 }
@@ -617,7 +610,6 @@ fn sys(str: &str) -> saphyr::Yaml {
 
 #[cfg(test)]
 mod tests {
-
     use regex::Regex;
 
     use super::*;
@@ -625,13 +617,19 @@ mod tests {
     #[test]
     fn test_boolean_literal_true() {
         let root_schema = load_from_doc(&sys("true")).unwrap();
-        assert_eq!(root_schema.schema, YamlSchema::BooleanLiteral(true));
+        assert_eq!(
+            *root_schema.schema.as_ref(),
+            YamlSchema::BooleanLiteral(true)
+        );
     }
 
     #[test]
     fn test_boolean_literal_false() {
         let root_schema = load_from_doc(&sys("false")).unwrap();
-        assert_eq!(root_schema.schema, YamlSchema::BooleanLiteral(false));
+        assert_eq!(
+            *root_schema.schema.as_ref(),
+            YamlSchema::BooleanLiteral(false)
+        );
     }
 
     #[test]
@@ -641,7 +639,10 @@ mod tests {
         let const_schema = ConstSchema {
             r#const: ConstValue::string("string value"),
         };
-        assert_eq!(root_schema.schema, YamlSchema::Const(const_schema));
+        assert_eq!(
+            *root_schema.schema.as_ref(),
+            YamlSchema::Const(const_schema)
+        );
     }
 
     #[test]
@@ -651,7 +652,10 @@ mod tests {
         let const_schema = ConstSchema {
             r#const: ConstValue::integer(42),
         };
-        assert_eq!(root_schema.schema, YamlSchema::Const(const_schema));
+        assert_eq!(
+            *root_schema.schema.as_ref(),
+            YamlSchema::Const(const_schema)
+        );
     }
 
     #[test]
@@ -670,7 +674,10 @@ mod tests {
         let docs = saphyr::Yaml::load_from_str("type: string").unwrap();
         let root_schema = load_from_doc(docs.first().unwrap()).unwrap();
         let string_schema = StringSchema::default();
-        assert_eq!(root_schema.schema, YamlSchema::String(string_schema));
+        assert_eq!(
+            *root_schema.schema.as_ref(),
+            YamlSchema::String(string_schema)
+        );
     }
 
     #[test]
@@ -687,7 +694,10 @@ mod tests {
             pattern: Some(Regex::new("^(\\([0-9]{3}\\))?[0-9]{3}-[0-9]{4}$").unwrap()),
             ..Default::default()
         };
-        assert_eq!(root_schema.schema, YamlSchema::String(string_schema));
+        assert_eq!(
+            *root_schema.schema.as_ref(),
+            YamlSchema::String(string_schema)
+        );
     }
 
     #[test]
@@ -711,7 +721,10 @@ mod tests {
         let docs = saphyr::Yaml::load_from_str("type: integer").unwrap();
         let root_schema = load_from_doc(docs.first().unwrap()).unwrap();
         let integer_schema = IntegerSchema::default();
-        assert_eq!(root_schema.schema, YamlSchema::Integer(integer_schema));
+        assert_eq!(
+            *root_schema.schema.as_ref(),
+            YamlSchema::Integer(integer_schema)
+        );
     }
 
     #[test]
@@ -733,7 +746,7 @@ mod tests {
         let enum_schema = EnumSchema {
             r#enum: enum_values,
         };
-        assert_eq!(root_schema.schema, YamlSchema::Enum(enum_schema));
+        assert_eq!(*root_schema.schema.as_ref(), YamlSchema::Enum(enum_schema));
     }
 
     #[test]
@@ -760,6 +773,6 @@ mod tests {
         let enum_schema = EnumSchema {
             r#enum: enum_values,
         };
-        assert_eq!(root_schema.schema, YamlSchema::Enum(enum_schema));
+        assert_eq!(*root_schema.schema.as_ref(), YamlSchema::Enum(enum_schema));
     }
 }

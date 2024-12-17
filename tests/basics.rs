@@ -3,7 +3,7 @@ use log::{debug, error};
 use std::cell::RefCell;
 use std::rc::Rc;
 use yaml_schema::validation::ValidationError;
-use yaml_schema::{Engine, RootSchema, YamlSchema};
+use yaml_schema::{Engine, Result, RootSchema};
 
 #[derive(Debug, Default, World)]
 pub struct BasicsWorld {
@@ -25,49 +25,27 @@ async fn a_yaml_schema(world: &mut BasicsWorld, step: &Step) {
     }
 }
 
-fn accepts(schema: &YamlSchema, value: &serde_yaml::Value) -> bool {
-    let engine = Engine::new(schema);
-    match engine.evaluate(value, true) {
-        Ok(_) => true,
-        Err(e) => {
-            debug!("Error: {:?}", e);
-            false
-        }
+fn evaluate(world: &mut BasicsWorld, s: &str) -> Result<bool> {
+    let context = Engine::evaluate(&world.root_schema, s, false)?;
+    world.errors = Some(context.errors.clone());
+    for error in context.errors.borrow().iter() {
+        println!("{}", error);
     }
+    Ok(!context.has_errors())
 }
 
 #[then(regex = "it should accept:")]
 async fn it_should_accept(world: &mut BasicsWorld, step: &Step) {
     let raw_input = step.docstring().unwrap();
-    debug!("raw_input: {:?}", raw_input);
-    let input: serde_yaml::Value = serde_yaml::from_str(raw_input).unwrap();
-    debug!("input: {:?}", input);
-    let schema = &world.root_schema.schema;
-    assert!(accepts(schema, &input));
+    let result = evaluate(world, raw_input).unwrap();
+    assert!(result);
 }
 
 #[then(regex = "it should NOT accept:")]
 async fn it_should_not_accept(world: &mut BasicsWorld, step: &Step) {
     let raw_input = step.docstring().unwrap();
-    debug!("raw_input: {:?}", raw_input);
-    let input: serde_yaml::Value = serde_yaml::from_str(raw_input).unwrap();
-    debug!("input: {:?}", input);
-    let schema = &world.root_schema.schema;
-    debug!("schema: {:?}", schema);
-    let engine = Engine::new(schema);
-    match engine.evaluate(&input, true) {
-        Ok(context) => {
-            assert!(
-                context.has_errors(),
-                "Validation succeeded when it was expected to fail!"
-            );
-            world.errors = Some(context.errors.clone());
-        }
-        Err(e) => {
-            error!("Error: {:?}", e);
-            world.yaml_schema_error = Some(e);
-        }
-    }
+    let result = evaluate(world, raw_input).unwrap();
+    assert!(!result);
 }
 
 #[then(expr = "the error message should be {string}")]

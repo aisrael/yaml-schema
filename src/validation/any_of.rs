@@ -7,7 +7,7 @@ use crate::Result;
 use crate::YamlSchema;
 
 impl Validator for crate::schemas::AnyOfSchema {
-    fn validate(&self, context: &Context, value: &serde_yaml::Value) -> Result<()> {
+    fn validate(&self, context: &Context, value: &saphyr::Yaml) -> Result<()> {
         let any_of_is_valid = validate_any_of(&self.any_of, value)?;
         if !any_of_is_valid {
             error!("AnyOf: None of the schemas in `oneOf` matched!");
@@ -18,7 +18,7 @@ impl Validator for crate::schemas::AnyOfSchema {
     }
 }
 
-pub fn validate_any_of(schemas: &Vec<YamlSchema>, value: &serde_yaml::Value) -> Result<bool> {
+pub fn validate_any_of(schemas: &Vec<YamlSchema>, value: &saphyr::Yaml) -> Result<bool> {
     for schema in schemas {
         debug!(
             "AnyOf: Validating value: {:?} against schema: {}",
