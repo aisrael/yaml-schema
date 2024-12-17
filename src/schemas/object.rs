@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use super::BoolOrTypedSchema;
+use crate::BoolOrTypedSchema;
 use crate::YamlSchema;
 
 /// An object schema
