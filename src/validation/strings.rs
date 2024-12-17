@@ -1,7 +1,8 @@
+use regex::Regex;
+
 use crate::Context;
 use crate::Result;
 use crate::StringSchema;
-use regex::Regex;
 
 use super::Validator;
 
