@@ -78,12 +78,12 @@ pub enum Number {
 }
 
 impl Number {
-    /// Create a new integer number
+    /// Create a new integer Number
     pub fn integer(value: i64) -> Number {
         Number::Integer(value)
     }
 
-    /// Create a new float number
+    /// Create a new float Number
     pub fn float(value: f64) -> Number {
         Number::Float(value)
     }
@@ -94,21 +94,6 @@ impl std::fmt::Display for Number {
         match self {
             Number::Integer(v) => write!(f, "{}", v),
             Number::Float(v) => write!(f, "{}", v),
-        }
-    }
-}
-
-impl TryFrom<saphyr::Yaml> for Number {
-    type Error = crate::Error;
-
-    fn try_from(value: saphyr::Yaml) -> Result<Self> {
-        match value {
-            saphyr::Yaml::Integer(i) => Ok(Number::Integer(i)),
-            saphyr::Yaml::Real(s) => Ok(Number::Float(s.parse::<f64>()?)),
-            _ => Err(unsupported_type!(
-                "Expected type: integer or float, but got: {:?}",
-                value
-            )),
         }
     }
 }
