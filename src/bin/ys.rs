@@ -63,39 +63,31 @@ fn command_validate(opts: Opts) -> Result<i32> {
     if opts.schemas.is_empty() {
         return Err(eyre::eyre!("No schema file(s) specified"));
     }
-    let schema_filename = opts.schemas.first().unwrap();
-    let root_schema = RootSchema::load_file(schema_filename)
-        .wrap_err_with(|| format!("Failed to read YAML schema file: {}", schema_filename))?;
-
     if opts.file.is_none() {
         return Err(eyre::eyre!("No YAML file specified"));
     }
 
-    let engine = Engine::new(&root_schema.schema);
+    let schema_filename = opts.schemas.first().unwrap();
+    let root_schema = RootSchema::load_file(schema_filename)
+        .wrap_err_with(|| format!("Failed to read YAML schema file: {}", schema_filename))?;
+
     let yaml_filename = opts.file.as_ref().unwrap();
-    let yaml_file = std::fs::File::open(yaml_filename)
-        .wrap_err_with(|| format!("Failed to open YAML file: {}", yaml_filename))?;
-    let yaml: serde_yaml::Value = serde_yaml::from_reader(yaml_file)?;
-    match engine.evaluate(&yaml, opts.fail_fast) {
+    let yaml_contents = std::fs::read_to_string(yaml_filename)
+        .wrap_err_with(|| format!("Failed to read YAML file: {}", yaml_filename))?;
+
+    match Engine::evaluate(&root_schema, &yaml_contents, opts.fail_fast) {
         Ok(context) => {
-            let errors = context.errors.borrow();
-            if errors.is_empty() {
-                println!("Validation successful");
-                Ok(0)
-            } else {
-                let error_messages: Vec<String> = errors
-                    .iter()
-                    .map(|validation_error| {
-                        format!("{}: {}", validation_error.path, validation_error.error)
-                    })
-                    .collect();
-                println!("Validation encountered errors:");
-                for error in error_messages {
-                    println!("  {}", error);
+            if context.has_errors() {
+                for error in context.errors.borrow().iter() {
+                    eprintln!("{}", error);
                 }
-                Ok(1)
+                return Ok(1);
             }
+            Ok(0)
         }
-        Err(e) => Err(e.into()),
+        Err(e) => {
+            eprintln!("Validation failed: {}", e);
+            Ok(1)
+        }
     }
 }

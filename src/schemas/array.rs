@@ -1,6 +1,7 @@
 use log::debug;
 
 use crate::format_vec;
+use crate::Context;
 use crate::Result;
 use crate::Validator;
 use crate::YamlSchema;
@@ -26,55 +27,48 @@ impl std::fmt::Display for ArraySchema {
 }
 
 impl Validator for ArraySchema {
-    fn validate(&self, context: &crate::Context, value: &serde_yaml::Value) -> Result<()> {
-        if !value.is_sequence() {
+    fn validate(&self, context: &Context, value: &saphyr::Yaml) -> Result<()> {
+        debug!("[ArraySchema] self: {:?}", self);
+        debug!("[ArraySchema] Validating value: {:?}", value);
+
+        if !value.is_array() {
             context.add_error(format!("Expected an array, but got: {:?}", value));
             fail_fast!(context);
             return Ok(());
         }
 
-        let array = value.as_sequence().unwrap();
-
-        // validate array items
-        if let Some(items) = &self.items {
-            match items {
-                BoolOrTypedSchema::Boolean(true) => { /* no-op */ }
-                BoolOrTypedSchema::Boolean(false) => {
-                    if self.prefix_items.is_none() {
-                        context.add_error("Array items are not allowed!".to_string());
-                    }
-                }
-                BoolOrTypedSchema::TypedSchema(typed_schema) => {
-                    for item in array {
-                        typed_schema.validate(context, item)?;
-                    }
-                }
-            }
-        }
+        let array = value.as_vec().unwrap();
 
         // validate contains
-        if let Some(contains) = &self.contains {
-            if !array
-                .iter()
-                .any(|item| contains.validate(context, item).is_ok())
-            {
+        if let Some(sub_schema) = &self.contains {
+            if !array.iter().any(|item| {
+                let sub_context = Context::new(true);
+                sub_schema.validate(&sub_context, item).is_ok()
+            }) {
                 context.add_error("Contains validation failed!".to_string());
             }
         }
 
         // validate prefix items
         if let Some(prefix_items) = &self.prefix_items {
-            debug!("Validating prefix items: {}", format_vec(prefix_items));
+            debug!(
+                "[ArraySchema] Validating prefix items: {}",
+                format_vec(prefix_items)
+            );
             for (i, item) in array.iter().enumerate() {
                 // if the index is within the prefix items, validate against the prefix items schema
                 if i < prefix_items.len() {
                     debug!(
-                        "Validating prefix item {} with schema: {}",
+                        "[ArraySchema] Validating prefix item {} with schema: {}",
                         i, prefix_items[i]
                     );
                     prefix_items[i].validate(context, item)?;
                 } else if let Some(items) = &self.items {
                     // if the index is not within the prefix items, validate against the array items schema
+                    debug!(
+                        "[ArraySchema] Validating array item {} with schema: {}",
+                        i, items
+                    );
                     match items {
                         BoolOrTypedSchema::Boolean(true) => {
                             // `items: true` allows any items
@@ -92,8 +86,113 @@ impl Validator for ArraySchema {
                     break;
                 }
             }
+        } else {
+            // validate array items
+            if let Some(items) = &self.items {
+                match items {
+                    BoolOrTypedSchema::Boolean(true) => { /* no-op */ }
+                    BoolOrTypedSchema::Boolean(false) => {
+                        if self.prefix_items.is_none() {
+                            context.add_error("Array items are not allowed!".to_string());
+                        }
+                    }
+                    BoolOrTypedSchema::TypedSchema(typed_schema) => {
+                        for item in array {
+                            typed_schema.validate(context, item)?;
+                        }
+                    }
+                }
+            }
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::loader::Constructor;
+    use crate::{schemas::TypedSchema, NumberSchema, StringSchema};
+
+    use super::*;
+
+    #[test]
+    fn test_array_schema_prefix_items() {
+        let schema = ArraySchema {
+            prefix_items: Some(vec![YamlSchema::Number(NumberSchema::default())]),
+            items: Some(BoolOrTypedSchema::TypedSchema(Box::new(
+                TypedSchema::String(StringSchema::default()),
+            ))),
+            ..Default::default()
+        };
+        let value = saphyr::Yaml::Array(vec![
+            saphyr::Yaml::Integer(1),
+            saphyr::Yaml::Integer(2),
+            saphyr::Yaml::String("Washington".to_string()),
+        ]);
+        let context = crate::Context::default();
+        let result = schema.validate(&context, &value);
+        if result.is_err() {
+            println!("{}", result.unwrap_err());
+        }
+    }
+
+    #[test]
+    fn test_array_schema_prefix_items_from_yaml() {
+        let schema_string = r#"      type: array
+      prefixItems:
+        - type: number
+        - type: string
+        - enum:
+          - Street
+          - Avenue
+          - Boulevard
+        - enum:
+          - NW
+          - NE
+          - SW
+          - SE
+      items:
+        type: string
+        "#;
+
+        let yaml_string = r#"
+        - 1600
+        - Pennsylvania
+        - Avenue
+        - NW
+        - Washington
+        "#;
+
+        let s_docs = saphyr::Yaml::load_from_str(schema_string).unwrap();
+        let first_schema = s_docs.first().unwrap();
+        let array_schema_hash = first_schema.as_hash().unwrap();
+        let schema = ArraySchema::construct(array_schema_hash).unwrap();
+        let docs = saphyr::Yaml::load_from_str(yaml_string).unwrap();
+        let value = docs.first().unwrap();
+        let context = crate::Context::default();
+        let result = schema.validate(&context, value);
+        if result.is_err() {
+            println!("{}", result.unwrap_err());
+        }
+    }
+
+    #[test]
+    fn test_contains() {
+        let schema = ArraySchema {
+            contains: Some(Box::new(YamlSchema::Number(NumberSchema::default()))),
+            ..Default::default()
+        };
+        let value = saphyr::Yaml::Array(vec![
+            saphyr::Yaml::String("life".to_string()),
+            saphyr::Yaml::String("universe".to_string()),
+            saphyr::Yaml::String("everything".to_string()),
+            saphyr::Yaml::Integer(42),
+        ]);
+        let context = crate::Context::default();
+        let result = schema.validate(&context, &value);
+        assert!(result.is_ok());
+        let errors = context.errors.take();
+        assert!(errors.is_empty());
     }
 }

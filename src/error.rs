@@ -45,7 +45,7 @@ macro_rules! unsupported_type {
 #[macro_export]
 macro_rules! generic_error {
     ($s:literal, $($e:expr),+) => {
-        Err($crate::Error::GenericError(format!($s, $($e),+)))
+        $crate::Error::GenericError(format!($s, $($e),+))
     };
     ($s:literal) => {
         $crate::Error::GenericError($s.to_string())

@@ -1,4 +1,5 @@
 /// The schemas defined in the YAML schema language
+use log::debug;
 use std::fmt;
 
 use crate::Result;
@@ -43,15 +44,15 @@ pub enum TypedSchema {
 /// A type value is either a string or an array of strings
 #[derive(Debug, PartialEq)]
 pub enum TypeValue {
-    Single(serde_yaml::Value),
+    Single(saphyr::Yaml),
     Array(Vec<String>),
 }
 
 impl TypedSchema {
-    pub fn for_yaml_value(value: &serde_yaml::Value) -> Result<TypedSchema> {
+    pub fn for_yaml_value(value: &saphyr::Yaml) -> Result<TypedSchema> {
         match value {
-            serde_yaml::Value::Null => Ok(TypedSchema::Null),
-            serde_yaml::Value::String(s) => Ok(TypedSchema::for_type_string(s.as_str())?),
+            saphyr::Yaml::Null => Ok(TypedSchema::Null),
+            saphyr::Yaml::String(s) => Ok(TypedSchema::for_type_string(s.as_str())?),
             _ => panic!("Unknown type: {:?}", value),
         }
     }
@@ -84,7 +85,9 @@ impl fmt::Display for TypedSchema {
 }
 
 impl Validator for TypedSchema {
-    fn validate(&self, context: &crate::Context, value: &serde_yaml::Value) -> Result<()> {
+    fn validate(&self, context: &crate::Context, value: &saphyr::Yaml) -> Result<()> {
+        debug!("[TypedSchema] self: {}", self);
+        debug!("[TypedSchema] Validating value: {:?}", value);
         match self {
             TypedSchema::Array(a) => a.validate(context, value),
             TypedSchema::BooleanSchema => Ok(()),

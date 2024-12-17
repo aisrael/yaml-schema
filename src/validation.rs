@@ -6,15 +6,14 @@ mod objects;
 mod one_of;
 mod strings;
 
+use crate::Result;
+use crate::YamlSchema;
 pub use context::Context;
 use log::debug;
 
-use crate::Result;
-use crate::YamlSchema;
-
 /// A trait for validating a value against a schema
 pub trait Validator {
-    fn validate(&self, context: &Context, value: &serde_yaml::Value) -> Result<()>;
+    fn validate(&self, context: &Context, value: &saphyr::Yaml) -> Result<()>;
 }
 
 /// A validation error simply contains a path and an error message
@@ -34,7 +33,7 @@ impl std::fmt::Display for ValidationError {
 }
 
 impl Validator for YamlSchema {
-    fn validate(&self, context: &Context, value: &serde_yaml::Value) -> Result<()> {
+    fn validate(&self, context: &Context, value: &saphyr::Yaml) -> Result<()> {
         debug!("[YamlSchema] self: {}", self);
         debug!("[YamlSchema] Validating value: {:?}", value);
         match self {
@@ -66,9 +65,37 @@ impl Validator for YamlSchema {
     }
 }
 
-fn validate_boolean_schema(context: &Context, value: &serde_yaml::Value) -> Result<()> {
-    if !value.is_bool() {
+fn validate_boolean_schema(context: &Context, value: &saphyr::Yaml) -> Result<()> {
+    if !value.is_boolean() {
         context.add_error(format!("Expected: boolean, found: {:?}", value));
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_validate_empty_schema() {
+        let schema = YamlSchema::Empty;
+        let context = Context::default();
+        let value = saphyr::Yaml::from_str("value");
+        let result = schema.validate(&context, &value);
+        assert!(result.is_ok());
+        assert!(!context.has_errors());
+    }
+
+    #[test]
+    fn test_validate_type_null() {
+        let schema = YamlSchema::TypeNull;
+        let context = Context::default();
+        let value = saphyr::Yaml::from_str("value");
+        let result = schema.validate(&context, &value);
+        assert!(result.is_ok());
+        assert!(context.has_errors());
+        let errors = context.errors.borrow();
+        let error = errors.first().unwrap();
+        assert_eq!(error.error, "Expected null, but got: String(\"value\")");
+    }
 }

@@ -3,10 +3,9 @@ use crate::validation::Context;
 use crate::validation::Validator;
 use crate::Result;
 use log::debug;
-use serde_yaml::Value;
 
 impl Validator for NotSchema {
-    fn validate(&self, context: &Context, value: &Value) -> Result<()> {
+    fn validate(&self, context: &Context, value: &saphyr::Yaml) -> Result<()> {
         debug!(
             "Not: Validating value: {:?} against schema: {}",
             value, self.not

@@ -1,4 +1,4 @@
-use serde::{Deserialize, Serialize};
+use std::rc::Rc;
 
 pub mod engine;
 #[macro_use]
@@ -38,7 +38,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 pub struct RootSchema {
     pub id: Option<String>,
     pub meta_schema: Option<String>,
-    pub schema: YamlSchema,
+    pub schema: Rc<YamlSchema>,
 }
 
 impl RootSchema {
@@ -47,7 +47,7 @@ impl RootSchema {
         RootSchema {
             id: None,
             meta_schema: None,
-            schema,
+            schema: Rc::new(schema),
         }
     }
 
@@ -63,11 +63,15 @@ impl RootSchema {
         }
         loader::load_from_doc(docs.first().unwrap())
     }
+
+    pub fn validate(&self, context: &Context, value: &saphyr::Yaml) -> Result<()> {
+        self.schema.validate(context, value)?;
+        Ok(())
+    }
 }
 
 /// A Number is either an integer or a float
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
-#[serde(untagged)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Number {
     Integer(i64),
     Float(f64),
@@ -83,16 +87,6 @@ impl Number {
     pub fn float(value: f64) -> Number {
         Number::Float(value)
     }
-
-    fn from_serde_yaml_number(value: &serde_yaml::Number) -> Self {
-        if value.is_i64() {
-            Number::Integer(value.as_i64().unwrap())
-        } else if value.is_f64() {
-            return Number::Float(value.as_f64().unwrap());
-        } else {
-            panic!("Expected an integer or float, but got: {:?}", value);
-        }
-    }
 }
 
 impl std::fmt::Display for Number {
@@ -100,6 +94,21 @@ impl std::fmt::Display for Number {
         match self {
             Number::Integer(v) => write!(f, "{}", v),
             Number::Float(v) => write!(f, "{}", v),
+        }
+    }
+}
+
+impl TryFrom<saphyr::Yaml> for Number {
+    type Error = crate::Error;
+
+    fn try_from(value: saphyr::Yaml) -> Result<Self> {
+        match value {
+            saphyr::Yaml::Integer(i) => Ok(Number::Integer(i)),
+            saphyr::Yaml::Real(s) => Ok(Number::Float(s.parse::<f64>()?)),
+            _ => Err(unsupported_type!(
+                "Expected type: integer or float, but got: {:?}",
+                value
+            )),
         }
     }
 }
@@ -138,13 +147,25 @@ impl ConstValue {
             _ => panic!("Expected a constant value, but got: {:?}", value),
         }
     }
-    pub fn from_serde_yaml_value(value: &serde_yaml::Value) -> ConstValue {
+}
+
+impl TryFrom<saphyr::Yaml> for ConstValue {
+    type Error = crate::Error;
+
+    fn try_from(value: saphyr::Yaml) -> Result<Self> {
         match value {
-            serde_yaml::Value::Bool(b) => ConstValue::Boolean(*b),
-            serde_yaml::Value::Number(n) => ConstValue::Number(Number::from_serde_yaml_number(n)),
-            serde_yaml::Value::String(s) => ConstValue::String(s.clone()),
-            serde_yaml::Value::Null => ConstValue::Null,
-            _ => panic!("Expected a constant value, but got: {:?}", value),
+            saphyr::Yaml::Boolean(b) => Ok(ConstValue::Boolean(b)),
+            saphyr::Yaml::Integer(i) => Ok(ConstValue::Number(Number::integer(i))),
+            saphyr::Yaml::Real(s) => {
+                let f = s.parse::<f64>()?;
+                Ok(ConstValue::Number(Number::float(f)))
+            }
+            saphyr::Yaml::String(s) => Ok(ConstValue::String(s.clone())),
+            saphyr::Yaml::Null => Ok(ConstValue::Null),
+            v => Err(unsupported_type!(
+                "Expected a constant value, but got: {:?}",
+                v
+            )),
         }
     }
 }
@@ -152,10 +173,10 @@ impl ConstValue {
 impl std::fmt::Display for ConstValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ConstValue::Boolean(b) => write!(f, "const: {}", b),
-            ConstValue::Null => write!(f, "const: null"),
-            ConstValue::Number(n) => write!(f, "const: {}", n),
-            ConstValue::String(s) => write!(f, "const: {}", s),
+            ConstValue::Boolean(b) => write!(f, "{} (bool)", b),
+            ConstValue::Null => write!(f, "null"),
+            ConstValue::Number(n) => write!(f, "{} (number)", n),
+            ConstValue::String(s) => write!(f, "\"{}\"", s),
         }
     }
 }
@@ -238,15 +259,28 @@ where
     format!("[{}]", items.join(", "))
 }
 
-/// Formats a serde_yaml::Value as a string
-fn format_serde_yaml_value(value: &serde_yaml::Value) -> String {
+/// Formats a saphyr::Yaml as a string
+fn format_serde_yaml_value(value: &saphyr::Yaml) -> String {
     match value {
-        serde_yaml::Value::Null => "null".to_string(),
-        serde_yaml::Value::Bool(b) => b.to_string(),
-        serde_yaml::Value::Number(n) => n.to_string(),
-        serde_yaml::Value::String(s) => format!("\"{}\"", s),
+        saphyr::Yaml::Null => "null".to_string(),
+        saphyr::Yaml::Boolean(b) => b.to_string(),
+        saphyr::Yaml::Integer(i) => i.to_string(),
+        saphyr::Yaml::Real(s) => s.clone(),
+        saphyr::Yaml::String(s) => format!("\"{}\"", s),
         _ => format!("{:?}", value),
     }
+}
+
+/// Use the ctor crate to initialize the logger for tests
+#[cfg(test)]
+#[ctor::ctor]
+fn init() {
+    env_logger::builder()
+        .filter_level(log::LevelFilter::Trace)
+        .format_target(false)
+        .format_timestamp_secs()
+        .target(env_logger::Target::Stdout)
+        .init();
 }
 
 #[cfg(test)]
@@ -254,17 +288,13 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_const_value_from_serde_yaml_value() {
-        let yaml = serde_yaml::Value::Bool(true);
-        let const_value = ConstValue::from_serde_yaml_value(&yaml);
-        assert_eq!(const_value, ConstValue::Boolean(true));
+    fn test_const_equality() {
+        let i1 = ConstValue::integer(42);
+        let i2 = ConstValue::integer(42);
+        assert_eq!(i1, i2);
 
-        let yaml = serde_yaml::Value::Number(42.into());
-        let const_value = ConstValue::from_serde_yaml_value(&yaml);
-        assert_eq!(const_value, ConstValue::Number(Number::integer(42)));
-
-        let yaml = serde_yaml::Value::String("Drive".to_string());
-        let const_value = ConstValue::from_serde_yaml_value(&yaml);
-        assert_eq!(const_value, ConstValue::String("Drive".to_string()));
+        let s1 = ConstValue::string("NW");
+        let s2 = ConstValue::string("NW");
+        assert_eq!(s1, s2);
     }
 }

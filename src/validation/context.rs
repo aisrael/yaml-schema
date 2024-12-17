@@ -2,10 +2,15 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use crate::validation::ValidationError;
+use crate::YamlSchema;
 
 /// The validation context
+#[derive(Debug, Default)]
 pub struct Context {
+    pub current_schema: Option<Rc<YamlSchema>>,
     pub current_path: Vec<String>,
+    pub stream_started: bool,
+    pub stream_ended: bool,
     pub errors: Rc<RefCell<Vec<ValidationError>>>,
     pub fail_fast: bool,
 }
@@ -23,9 +28,8 @@ impl Context {
 
     pub fn new(fail_fast: bool) -> Context {
         Context {
-            current_path: vec![],
-            errors: Rc::new(RefCell::new(Vec::new())),
             fail_fast,
+            ..Default::default()
         }
     }
 
@@ -46,9 +50,12 @@ impl Context {
         let mut new_path = self.current_path.clone();
         new_path.push(path.into());
         Context {
+            current_schema: self.current_schema.clone(),
             current_path: new_path,
             errors: self.errors.clone(),
             fail_fast: self.fail_fast,
+            stream_ended: self.stream_ended,
+            stream_started: self.stream_started,
         }
     }
 }

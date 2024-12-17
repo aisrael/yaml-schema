@@ -29,6 +29,10 @@ fn are_patterns_equal(a: &Option<Regex>, b: &Option<Regex>) -> bool {
 
 impl std::fmt::Display for StringSchema {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "String {:?}", self)
+        write!(
+            f,
+            "StringSchema {{ min_length: {:?}, max_length: {:?}, pattern: {:?} }}",
+            self.min_length, self.max_length, self.pattern
+        )
     }
 }
