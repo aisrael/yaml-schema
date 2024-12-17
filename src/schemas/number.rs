@@ -20,15 +20,15 @@ impl std::fmt::Display for NumberSchema {
 }
 
 impl Validator for NumberSchema {
-    fn validate(&self, context: &Context, value: &serde_yaml::Value) -> Result<()> {
-        if value.is_i64() {
+    fn validate(&self, context: &Context, value: &saphyr::Yaml) -> Result<()> {
+        if value.is_integer() {
             match value.as_i64() {
                 Some(i) => self.validate_number_i64(context, i),
                 None => {
                     context.add_error(format!("Expected an integer, but got: {:?}", value));
                 }
             }
-        } else if value.is_f64() {
+        } else if value.is_real() {
             match value.as_f64() {
                 Some(f) => self.validate_number_f64(context, f),
                 None => {

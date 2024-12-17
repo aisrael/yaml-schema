@@ -147,4 +147,4 @@ Feature: Basic YAML schema
       foo: 42
       bar: "I'm a string"
       ```
-    And the error message should be ".foo: Expected a string, but got: Number(42)"
+    And the error message should be ".foo: Expected a string, but got: Integer(42)"

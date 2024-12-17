@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::fs;
+use std::rc::Rc;
 
 use crate::AnyOfSchema;
 use crate::ArraySchema;
@@ -166,7 +167,7 @@ impl Constructor<TypedSchema> for TypedSchema {
 }
 
 /// A Constructor constructs an object (a schema) from a saphyr::Hash
-trait Constructor<T> {
+pub trait Constructor<T> {
     fn construct(hash: &saphyr::Hash) -> Result<T>;
 }
 
@@ -590,7 +591,7 @@ impl From<RootLoader> for RootSchema {
         RootSchema {
             id: loader.id,
             meta_schema: loader.meta_schema,
-            schema: loader.schema.unwrap_or(YamlSchema::Empty),
+            schema: Rc::new(loader.schema.unwrap_or(YamlSchema::Empty)),
         }
     }
 }
@@ -616,13 +617,19 @@ mod tests {
     #[test]
     fn test_boolean_literal_true() {
         let root_schema = load_from_doc(&sys("true")).unwrap();
-        assert_eq!(root_schema.schema, YamlSchema::BooleanLiteral(true));
+        assert_eq!(
+            *root_schema.schema.as_ref(),
+            YamlSchema::BooleanLiteral(true)
+        );
     }
 
     #[test]
     fn test_boolean_literal_false() {
         let root_schema = load_from_doc(&sys("false")).unwrap();
-        assert_eq!(root_schema.schema, YamlSchema::BooleanLiteral(false));
+        assert_eq!(
+            *root_schema.schema.as_ref(),
+            YamlSchema::BooleanLiteral(false)
+        );
     }
 
     #[test]
@@ -632,7 +639,10 @@ mod tests {
         let const_schema = ConstSchema {
             r#const: ConstValue::string("string value"),
         };
-        assert_eq!(root_schema.schema, YamlSchema::Const(const_schema));
+        assert_eq!(
+            *root_schema.schema.as_ref(),
+            YamlSchema::Const(const_schema)
+        );
     }
 
     #[test]
@@ -642,7 +652,10 @@ mod tests {
         let const_schema = ConstSchema {
             r#const: ConstValue::integer(42),
         };
-        assert_eq!(root_schema.schema, YamlSchema::Const(const_schema));
+        assert_eq!(
+            *root_schema.schema.as_ref(),
+            YamlSchema::Const(const_schema)
+        );
     }
 
     #[test]
@@ -661,7 +674,10 @@ mod tests {
         let docs = saphyr::Yaml::load_from_str("type: string").unwrap();
         let root_schema = load_from_doc(docs.first().unwrap()).unwrap();
         let string_schema = StringSchema::default();
-        assert_eq!(root_schema.schema, YamlSchema::String(string_schema));
+        assert_eq!(
+            *root_schema.schema.as_ref(),
+            YamlSchema::String(string_schema)
+        );
     }
 
     #[test]
@@ -678,7 +694,10 @@ mod tests {
             pattern: Some(Regex::new("^(\\([0-9]{3}\\))?[0-9]{3}-[0-9]{4}$").unwrap()),
             ..Default::default()
         };
-        assert_eq!(root_schema.schema, YamlSchema::String(string_schema));
+        assert_eq!(
+            *root_schema.schema.as_ref(),
+            YamlSchema::String(string_schema)
+        );
     }
 
     #[test]
@@ -702,7 +721,10 @@ mod tests {
         let docs = saphyr::Yaml::load_from_str("type: integer").unwrap();
         let root_schema = load_from_doc(docs.first().unwrap()).unwrap();
         let integer_schema = IntegerSchema::default();
-        assert_eq!(root_schema.schema, YamlSchema::Integer(integer_schema));
+        assert_eq!(
+            *root_schema.schema.as_ref(),
+            YamlSchema::Integer(integer_schema)
+        );
     }
 
     #[test]
@@ -724,7 +746,7 @@ mod tests {
         let enum_schema = EnumSchema {
             r#enum: enum_values,
         };
-        assert_eq!(root_schema.schema, YamlSchema::Enum(enum_schema));
+        assert_eq!(*root_schema.schema.as_ref(), YamlSchema::Enum(enum_schema));
     }
 
     #[test]
@@ -751,6 +773,6 @@ mod tests {
         let enum_schema = EnumSchema {
             r#enum: enum_values,
         };
-        assert_eq!(root_schema.schema, YamlSchema::Enum(enum_schema));
+        assert_eq!(*root_schema.schema.as_ref(), YamlSchema::Enum(enum_schema));
     }
 }

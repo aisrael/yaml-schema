@@ -6,7 +6,7 @@ use regex::Regex;
 use super::Validator;
 
 impl Validator for StringSchema {
-    fn validate(&self, context: &Context, value: &serde_yaml::Value) -> Result<()> {
+    fn validate(&self, context: &Context, value: &saphyr::Yaml) -> Result<()> {
         let errors = validate_string(
             self.min_length,
             self.max_length,
@@ -27,7 +27,7 @@ pub fn validate_string(
     min_length: Option<usize>,
     max_length: Option<usize>,
     pattern: Option<&Regex>,
-    value: &serde_yaml::Value,
+    value: &saphyr::Yaml,
 ) -> Vec<String> {
     let mut errors = Vec::new();
     let yaml_string = match value.as_str() {
@@ -56,4 +56,44 @@ pub fn validate_string(
         }
     }
     errors
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_validate_string() {
+        let errors = validate_string(None, None, None, &saphyr::Yaml::String("hello".to_string()));
+        assert!(errors.is_empty());
+    }
+
+    #[test]
+    fn test_validate_string_with_min_length() {
+        let errors = validate_string(
+            Some(5),
+            None,
+            None,
+            &saphyr::Yaml::String("hello".to_string()),
+        );
+        assert!(errors.is_empty());
+        let errors = validate_string(
+            Some(5),
+            None,
+            None,
+            &saphyr::Yaml::String("hell".to_string()),
+        );
+        assert!(!errors.is_empty());
+        let first = errors.first().unwrap();
+        assert_eq!(first, "String is too short! (min length: 5)");
+    }
+
+    #[test]
+    fn test_string_schema_validation() {
+        let schema = StringSchema::default();
+        let value = saphyr::Yaml::String("Washington".to_string());
+        let context = Context::default();
+        let result = schema.validate(&context, &value);
+        assert!(result.is_ok());
+    }
 }

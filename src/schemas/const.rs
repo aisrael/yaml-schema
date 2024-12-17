@@ -20,7 +20,7 @@ impl std::fmt::Display for ConstSchema {
 }
 
 impl Validator for ConstSchema {
-    fn validate(&self, context: &Context, value: &serde_yaml::Value) -> Result<()> {
+    fn validate(&self, context: &Context, value: &saphyr::Yaml) -> Result<()> {
         debug!(
             "Validating value: {:?} against const: {:?}",
             value, self.r#const
@@ -45,7 +45,7 @@ impl Validator for ConstSchema {
             }
             ConstValue::Number(n) => match n {
                 Number::Integer(i) => {
-                    if value.is_i64() {
+                    if value.is_integer() {
                         if value.as_i64() != Some(*i) {
                             let error = format!(
                                 "Const validation failed, expected: {:?}, got: {:?}",
@@ -62,7 +62,7 @@ impl Validator for ConstSchema {
                     }
                 }
                 Number::Float(f) => {
-                    if value.is_f64() {
+                    if value.is_real() {
                         if value.as_f64() != Some(*f) {
                             let error = format!(
                                 "Const validation failed, expected: {:?}, got: {:?}",

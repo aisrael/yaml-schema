@@ -13,7 +13,7 @@ use crate::YamlSchema;
 pub fn try_validate_value_against_properties(
     context: &Context,
     key: &String,
-    value: &serde_yaml::Value,
+    value: &saphyr::Yaml,
     properties: &HashMap<String, YamlSchema>,
 ) -> Result<bool> {
     let sub_context = context.append_path(key);
@@ -34,7 +34,7 @@ pub fn try_validate_value_against_properties(
 pub fn try_validate_value_against_additional_properties(
     context: &Context,
     key: &String,
-    value: &serde_yaml::Value,
+    value: &saphyr::Yaml,
     additional_properties: &BoolOrTypedSchema,
 ) -> Result<bool> {
     let sub_context = context.append_path(key);
@@ -58,12 +58,12 @@ pub fn try_validate_value_against_additional_properties(
 
 impl Validator for ObjectSchema {
     /// Validate the object according to the schema rules
-    fn validate(&self, context: &Context, value: &serde_yaml::Value) -> Result<()> {
+    fn validate(&self, context: &Context, value: &saphyr::Yaml) -> Result<()> {
         debug!("Validating object: {:?}", value);
-        match value.as_mapping() {
-            Some(mapping) => self.validate_object_mapping(context, mapping),
-            None => {
-                context.add_error("Expected an object, but got: None");
+        match value {
+            saphyr::Yaml::Hash(hash) => self.validate_object_mapping(context, hash),
+            other => {
+                context.add_error(format!("Expected an object, but got: {:#?}", other));
                 Ok(())
             }
         }
@@ -71,14 +71,10 @@ impl Validator for ObjectSchema {
 }
 
 impl ObjectSchema {
-    fn validate_object_mapping(
-        &self,
-        context: &Context,
-        mapping: &serde_yaml::Mapping,
-    ) -> Result<()> {
+    fn validate_object_mapping(&self, context: &Context, mapping: &saphyr::Hash) -> Result<()> {
         for (k, value) in mapping {
             let key = match k {
-                serde_yaml::Value::String(s) => s.clone(),
+                saphyr::Yaml::String(s) => s.clone(),
                 _ => k.as_str().unwrap_or_default().to_string(),
             };
             debug!("validate_object_mapping: key: \"{}\"", key);
@@ -117,10 +113,11 @@ impl ObjectSchema {
                 })?;
                 debug!("Regex for property names: {}", re.as_str());
                 if !re.is_match(key.as_str()) {
-                    return Err(Error::GenericError(format!(
+                    context.add_error(format!(
                         "Property name '{}' does not match pattern specified in `propertyNames`!",
                         key
-                    )));
+                    ));
+                    fail_fast!(context)
                 }
             }
         }
@@ -128,11 +125,13 @@ impl ObjectSchema {
         // Validate required properties
         if let Some(required) = &self.required {
             for required_property in required {
-                if !mapping.contains_key(required_property) {
-                    return Err(Error::GenericError(format!(
+                let key = saphyr::Yaml::String(required_property.clone());
+                if !mapping.contains_key(&key) {
+                    context.add_error(format!(
                         "Required property '{}' is missing!",
                         required_property
-                    )));
+                    ));
+                    fail_fast!(context)
                 }
             }
         }
@@ -140,19 +139,21 @@ impl ObjectSchema {
         // Validate minProperties
         if let Some(min_properties) = &self.min_properties {
             if mapping.len() < *min_properties {
-                return Err(Error::GenericError(format!(
+                context.add_error(format!(
                     "Object has too few properties! Minimum is {}!",
                     min_properties
-                )));
+                ));
+                fail_fast!(context)
             }
         }
         // Validate maxProperties
         if let Some(max_properties) = &self.max_properties {
             if mapping.len() > *max_properties {
-                return Err(Error::GenericError(format!(
+                context.add_error(format!(
                     "Object has too many properties! Maximum is {}!",
                     max_properties
-                )));
+                ));
+                fail_fast!(context)
             }
         }
 
@@ -164,6 +165,7 @@ impl ObjectSchema {
 mod tests {
     use crate::engine;
     use crate::NumberSchema;
+    use crate::RootSchema;
     use crate::StringSchema;
 
     use super::*;
@@ -184,28 +186,23 @@ mod tests {
             ..Default::default()
         };
         let yaml_schema = YamlSchema::Object(schema);
-        let engine = engine::Engine::new(&yaml_schema);
-        let value = serde_yaml::from_str(
-            r#"
+        let root_schema = RootSchema::new(yaml_schema);
+        let value = r#"
             foo: "I'm a string"
             bar: 42
-        "#,
-        )
-        .unwrap();
-        assert!(engine.evaluate(&value, true).is_ok());
+        "#;
+        let result = engine::Engine::evaluate(&root_schema, value, true);
+        assert!(result.is_ok());
 
-        let value = serde_yaml::from_str(
-            r#"
+        let value2 = r#"
             foo: 42
             baz: "I'm a string"
-        "#,
-        )
-        .unwrap();
-        let context = engine.evaluate(&value, true).unwrap();
+        "#;
+        let context = engine::Engine::evaluate(&root_schema, value2, true).unwrap();
         assert!(context.has_errors());
         let errors = context.errors.borrow();
         let first_error = errors.first().unwrap();
         assert_eq!(first_error.path, "foo");
-        assert_eq!(first_error.error, "Expected a string, but got: Number(42)");
+        assert_eq!(first_error.error, "Expected a string, but got: Integer(42)");
     }
 }
