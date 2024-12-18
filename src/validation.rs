@@ -13,7 +13,7 @@ use log::debug;
 
 /// A trait for validating a sahpyr::Yaml value against a schema
 pub trait Validator {
-    fn validate(&self, context: &Context, value: &saphyr::Yaml) -> Result<()>;
+    fn validate(&self, context: &Context, value: &saphyr::MarkedYaml) -> Result<()>;
 }
 
 /// A validation error simply contains a path and an error message
@@ -33,14 +33,14 @@ impl std::fmt::Display for ValidationError {
 }
 
 impl Validator for YamlSchema {
-    fn validate(&self, context: &Context, value: &saphyr::Yaml) -> Result<()> {
+    fn validate(&self, context: &Context, value: &saphyr::MarkedYaml) -> Result<()> {
         debug!("[YamlSchema] self: {}", self);
         debug!("[YamlSchema] Validating value: {:?}", value);
         match self {
             YamlSchema::Empty => Ok(()),
             YamlSchema::TypeNull => {
-                if !value.is_null() {
-                    context.add_error(format!("Expected null, but got: {:?}", value));
+                if !value.data.is_null() {
+                    context.add_error(format!("Expected null, but got: {:?}", value.data));
                 }
                 Ok(())
             }
@@ -65,8 +65,8 @@ impl Validator for YamlSchema {
     }
 }
 
-fn validate_boolean_schema(context: &Context, value: &saphyr::Yaml) -> Result<()> {
-    if !value.is_boolean() {
+fn validate_boolean_schema(context: &Context, value: &saphyr::MarkedYaml) -> Result<()> {
+    if !value.data.is_boolean() {
         context.add_error(format!("Expected: boolean, found: {:?}", value));
     }
     Ok(())
@@ -80,8 +80,9 @@ mod tests {
     fn test_validate_empty_schema() {
         let schema = YamlSchema::Empty;
         let context = Context::default();
-        let value = saphyr::Yaml::from_str("value");
-        let result = schema.validate(&context, &value);
+        let docs = saphyr::MarkedYaml::load_from_str("value").unwrap();
+        let value = docs.first().unwrap();
+        let result = schema.validate(&context, value);
         assert!(result.is_ok());
         assert!(!context.has_errors());
     }
@@ -90,8 +91,9 @@ mod tests {
     fn test_validate_type_null() {
         let schema = YamlSchema::TypeNull;
         let context = Context::default();
-        let value = saphyr::Yaml::from_str("value");
-        let result = schema.validate(&context, &value);
+        let docs = saphyr::MarkedYaml::load_from_str("value").unwrap();
+        let value = docs.first().unwrap();
+        let result = schema.validate(&context, value);
         assert!(result.is_ok());
         assert!(context.has_errors());
         let errors = context.errors.borrow();

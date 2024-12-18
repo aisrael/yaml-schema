@@ -7,7 +7,7 @@ use crate::StringSchema;
 use super::Validator;
 
 impl Validator for StringSchema {
-    fn validate(&self, context: &Context, value: &saphyr::Yaml) -> Result<()> {
+    fn validate(&self, context: &Context, value: &saphyr::MarkedYaml) -> Result<()> {
         let errors = validate_string(
             self.min_length,
             self.max_length,
@@ -28,13 +28,14 @@ pub fn validate_string(
     min_length: Option<usize>,
     max_length: Option<usize>,
     pattern: Option<&Regex>,
-    value: &saphyr::Yaml,
+    value: &saphyr::MarkedYaml,
 ) -> Vec<String> {
     let mut errors = Vec::new();
-    let yaml_string = match value.as_str() {
+    let data = &value.data;
+    let yaml_string = match data.as_str() {
         Some(s) => s,
         None => {
-            errors.push(format!("Expected a string, but got: {:?}", value));
+            errors.push(format!("Expected a string, but got: {:?}", data));
             return errors;
         }
     };
@@ -90,25 +91,19 @@ mod tests {
 
     #[test]
     fn test_validate_string() {
-        let errors = validate_string(None, None, None, &saphyr::Yaml::String("hello".to_string()));
+        let docs = saphyr::MarkedYaml::load_from_str("hello").unwrap();
+        let value = docs.first().unwrap();
+        let errors = validate_string(None, None, None, value);
         assert!(errors.is_empty());
     }
 
     #[test]
     fn test_validate_string_with_min_length() {
-        let errors = validate_string(
-            Some(5),
-            None,
-            None,
-            &saphyr::Yaml::String("hello".to_string()),
-        );
+        let docs = saphyr::MarkedYaml::load_from_str("hello").unwrap();
+        let errors = validate_string(Some(5), None, None, docs.first().unwrap());
         assert!(errors.is_empty());
-        let errors = validate_string(
-            Some(5),
-            None,
-            None,
-            &saphyr::Yaml::String("hell".to_string()),
-        );
+        let docs = saphyr::MarkedYaml::load_from_str("hell").unwrap();
+        let errors = validate_string(Some(5), None, None, docs.first().unwrap());
         assert!(!errors.is_empty());
         let first = errors.first().unwrap();
         assert_eq!(first, "String is too short! (min length: 5)");
@@ -117,9 +112,10 @@ mod tests {
     #[test]
     fn test_string_schema_validation() {
         let schema = StringSchema::default();
-        let value = saphyr::Yaml::String("Washington".to_string());
+        let docs = saphyr::MarkedYaml::load_from_str("Washington").unwrap();
+        let value = docs.first().unwrap();
         let context = Context::default();
-        let result = schema.validate(&context, &value);
+        let result = schema.validate(&context, value);
         assert!(result.is_ok());
     }
 }

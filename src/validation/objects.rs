@@ -13,7 +13,7 @@ use crate::YamlSchema;
 pub fn try_validate_value_against_properties(
     context: &Context,
     key: &String,
-    value: &saphyr::Yaml,
+    value: &saphyr::MarkedYaml,
     properties: &HashMap<String, YamlSchema>,
 ) -> Result<bool> {
     let sub_context = context.append_path(key);
@@ -34,7 +34,7 @@ pub fn try_validate_value_against_properties(
 pub fn try_validate_value_against_additional_properties(
     context: &Context,
     key: &String,
-    value: &saphyr::Yaml,
+    value: &saphyr::MarkedYaml,
     additional_properties: &BoolOrTypedSchema,
 ) -> Result<bool> {
     let sub_context = context.append_path(key);
@@ -58,10 +58,11 @@ pub fn try_validate_value_against_additional_properties(
 
 impl Validator for ObjectSchema {
     /// Validate the object according to the schema rules
-    fn validate(&self, context: &Context, value: &saphyr::Yaml) -> Result<()> {
-        debug!("Validating object: {:?}", value);
-        match value {
-            saphyr::Yaml::Hash(hash) => self.validate_object_mapping(context, hash),
+    fn validate(&self, context: &Context, value: &saphyr::MarkedYaml) -> Result<()> {
+        let data = &value.data;
+        debug!("Validating object: {:?}", data);
+        match data {
+            saphyr::YamlData::Hash(hash) => self.validate_object_mapping(context, hash),
             other => {
                 context.add_error(format!("Expected an object, but got: {:#?}", other));
                 Ok(())
@@ -71,11 +72,15 @@ impl Validator for ObjectSchema {
 }
 
 impl ObjectSchema {
-    fn validate_object_mapping(&self, context: &Context, mapping: &saphyr::Hash) -> Result<()> {
+    fn validate_object_mapping(
+        &self,
+        context: &Context,
+        mapping: &saphyr::AnnotatedHash<saphyr::MarkedYaml>,
+    ) -> Result<()> {
         for (k, value) in mapping {
-            let key = match k {
-                saphyr::Yaml::String(s) => s.clone(),
-                _ => k.as_str().unwrap_or_default().to_string(),
+            let key = match &k.data {
+                saphyr::YamlData::String(s) => s.clone(),
+                _ => k.data.as_str().unwrap_or_default().to_string(),
             };
             debug!("validate_object_mapping: key: \"{}\"", key);
             // First, we check the explicitly defined properties, and validate against it if found
@@ -125,8 +130,11 @@ impl ObjectSchema {
         // Validate required properties
         if let Some(required) = &self.required {
             for required_property in required {
-                let key = saphyr::Yaml::String(required_property.clone());
-                if !mapping.contains_key(&key) {
+                if !mapping
+                    .keys()
+                    .map(|k| k.data.as_str().unwrap())
+                    .any(|s| s == required_property)
+                {
                     context.add_error(format!(
                         "Required property '{}' is missing!",
                         required_property

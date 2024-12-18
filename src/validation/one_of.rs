@@ -7,7 +7,7 @@ use crate::Result;
 use crate::YamlSchema;
 
 impl Validator for crate::schemas::OneOfSchema {
-    fn validate(&self, context: &Context, value: &saphyr::Yaml) -> Result<()> {
+    fn validate(&self, context: &Context, value: &saphyr::MarkedYaml) -> Result<()> {
         let one_of_is_valid = validate_one_of(context, &self.one_of, value)?;
         if !one_of_is_valid {
             error!("OneOf: None of the schemas in `oneOf` matched!");
@@ -21,7 +21,7 @@ impl Validator for crate::schemas::OneOfSchema {
 pub fn validate_one_of(
     context: &Context,
     schemas: &Vec<YamlSchema>,
-    value: &saphyr::Yaml,
+    value: &saphyr::MarkedYaml,
 ) -> Result<bool> {
     let mut one_of_is_valid = false;
     for schema in schemas {

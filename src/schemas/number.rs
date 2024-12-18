@@ -20,23 +20,24 @@ impl std::fmt::Display for NumberSchema {
 }
 
 impl Validator for NumberSchema {
-    fn validate(&self, context: &Context, value: &saphyr::Yaml) -> Result<()> {
-        if value.is_integer() {
-            match value.as_i64() {
+    fn validate(&self, context: &Context, value: &saphyr::MarkedYaml) -> Result<()> {
+        let data = &value.data;
+        if data.is_integer() {
+            match data.as_i64() {
                 Some(i) => self.validate_number_i64(context, i),
                 None => {
-                    context.add_error(format!("Expected an integer, but got: {:?}", value));
+                    context.add_error(format!("Expected an integer, but got: {:?}", data));
                 }
             }
-        } else if value.is_real() {
-            match value.as_f64() {
+        } else if data.is_real() {
+            match data.as_f64() {
                 Some(f) => self.validate_number_f64(context, f),
                 None => {
-                    context.add_error(format!("Expected a float, but got: {:?}", value));
+                    context.add_error(format!("Expected a float, but got: {:?}", data));
                 }
             }
         } else {
-            context.add_error(format!("Expected a number, but got: {:?}", value));
+            context.add_error(format!("Expected a number, but got: {:?}", data));
         }
         if !context.errors.borrow().is_empty() {
             fail_fast!(context)

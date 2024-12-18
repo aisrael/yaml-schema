@@ -64,7 +64,7 @@ impl RootSchema {
         loader::load_from_doc(docs.first().unwrap())
     }
 
-    pub fn validate(&self, context: &Context, value: &saphyr::Yaml) -> Result<()> {
+    pub fn validate(&self, context: &Context, value: &saphyr::MarkedYaml) -> Result<()> {
         self.schema.validate(context, value)?;
         Ok(())
     }
@@ -130,6 +130,27 @@ impl ConstValue {
             saphyr::Yaml::String(s) => ConstValue::String(s.clone()),
             saphyr::Yaml::Null => ConstValue::Null,
             _ => panic!("Expected a constant value, but got: {:?}", value),
+        }
+    }
+}
+
+impl TryFrom<&saphyr::YamlData<saphyr::MarkedYaml>> for ConstValue {
+    type Error = crate::Error;
+
+    fn try_from(value: &saphyr::YamlData<saphyr::MarkedYaml>) -> Result<Self> {
+        match value {
+            saphyr::YamlData::String(s) => Ok(ConstValue::String(s.clone())),
+            saphyr::YamlData::Integer(i) => Ok(ConstValue::Number(Number::integer(*i))),
+            saphyr::YamlData::Real(f) => {
+                let f = f.parse::<f64>()?;
+                Ok(ConstValue::Number(Number::float(f)))
+            }
+            saphyr::YamlData::Boolean(b) => Ok(ConstValue::Boolean(*b)),
+            saphyr::YamlData::Null => Ok(ConstValue::Null),
+            v => Err(unsupported_type!(
+                "Expected a constant value, but got: {:?}",
+                v
+            )),
         }
     }
 }
@@ -244,15 +265,15 @@ where
     format!("[{}]", items.join(", "))
 }
 
-/// Formats a saphyr::Yaml as a string
-fn format_saphyr_yaml_value(value: &saphyr::Yaml) -> String {
-    match value {
-        saphyr::Yaml::Null => "null".to_string(),
-        saphyr::Yaml::Boolean(b) => b.to_string(),
-        saphyr::Yaml::Integer(i) => i.to_string(),
-        saphyr::Yaml::Real(s) => s.clone(),
-        saphyr::Yaml::String(s) => format!("\"{}\"", s),
-        _ => format!("{:?}", value),
+/// Formats a saphyr::YamlData as a string
+fn format_yaml_data(data: &saphyr::YamlData<saphyr::MarkedYaml>) -> String {
+    match data {
+        saphyr::YamlData::Null => "null".to_string(),
+        saphyr::YamlData::Boolean(b) => b.to_string(),
+        saphyr::YamlData::Integer(i) => i.to_string(),
+        saphyr::YamlData::Real(s) => s.clone(),
+        saphyr::YamlData::String(s) => format!("\"{}\"", s),
+        _ => format!("{:?}", data),
     }
 }
 

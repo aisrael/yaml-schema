@@ -32,7 +32,7 @@ impl<'a> Engine<'a> {
             ..Default::default()
         };
         let engine = Engine::new(root_schema, context);
-        let docs = saphyr::Yaml::load_from_str(value).map_err(Error::YamlParsingError)?;
+        let docs = saphyr::MarkedYaml::load_from_str(value).map_err(Error::YamlParsingError)?;
         if docs.is_empty() {
             match root_schema.schema.as_ref() {
                 YamlSchema::Empty => (),

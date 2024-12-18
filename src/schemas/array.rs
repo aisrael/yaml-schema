@@ -27,17 +27,18 @@ impl std::fmt::Display for ArraySchema {
 }
 
 impl Validator for ArraySchema {
-    fn validate(&self, context: &Context, value: &saphyr::Yaml) -> Result<()> {
+    fn validate(&self, context: &Context, value: &saphyr::MarkedYaml) -> Result<()> {
         debug!("[ArraySchema] self: {:?}", self);
-        debug!("[ArraySchema] Validating value: {:?}", value);
+        let data = &value.data;
+        debug!("[ArraySchema] Validating value: {:?}", data);
 
-        if !value.is_array() {
+        if !data.is_array() {
             context.add_error(format!("Expected an array, but got: {:?}", value));
             fail_fast!(context);
             return Ok(());
         }
 
-        let array = value.as_vec().unwrap();
+        let array = data.as_vec().unwrap();
 
         // validate contains
         if let Some(sub_schema) = &self.contains {
@@ -125,13 +126,15 @@ mod tests {
             ))),
             ..Default::default()
         };
-        let value = saphyr::Yaml::Array(vec![
-            saphyr::Yaml::Integer(1),
-            saphyr::Yaml::Integer(2),
-            saphyr::Yaml::String("Washington".to_string()),
-        ]);
+        let s = r#"
+        - 1
+        - 2
+        - Washington
+        "#;
+        let docs = saphyr::MarkedYaml::load_from_str(s).unwrap();
+        let value = docs.first().unwrap();
         let context = crate::Context::default();
-        let result = schema.validate(&context, &value);
+        let result = schema.validate(&context, value);
         if result.is_err() {
             println!("{}", result.unwrap_err());
         }
@@ -168,7 +171,7 @@ mod tests {
         let first_schema = s_docs.first().unwrap();
         let array_schema_hash = first_schema.as_hash().unwrap();
         let schema = ArraySchema::construct(array_schema_hash).unwrap();
-        let docs = saphyr::Yaml::load_from_str(yaml_string).unwrap();
+        let docs = saphyr::MarkedYaml::load_from_str(yaml_string).unwrap();
         let value = docs.first().unwrap();
         let context = crate::Context::default();
         let result = schema.validate(&context, value);
@@ -183,14 +186,16 @@ mod tests {
             contains: Some(Box::new(YamlSchema::Number(NumberSchema::default()))),
             ..Default::default()
         };
-        let value = saphyr::Yaml::Array(vec![
-            saphyr::Yaml::String("life".to_string()),
-            saphyr::Yaml::String("universe".to_string()),
-            saphyr::Yaml::String("everything".to_string()),
-            saphyr::Yaml::Integer(42),
-        ]);
+        let s = r#"
+        - life
+        - universe
+        - everything
+        - 42
+        "#;
+        let docs = saphyr::MarkedYaml::load_from_str(s).unwrap();
+        let value = docs.first().unwrap();
         let context = crate::Context::default();
-        let result = schema.validate(&context, &value);
+        let result = schema.validate(&context, value);
         assert!(result.is_ok());
         let errors = context.errors.take();
         assert!(errors.is_empty());

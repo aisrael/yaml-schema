@@ -1,9 +1,10 @@
 use log::debug;
 
-use crate::format_saphyr_yaml_value;
 use crate::format_vec;
+use crate::format_yaml_data;
 use crate::ConstValue;
 use crate::Context;
+use crate::Error;
 use crate::Result;
 use crate::Validator;
 
@@ -20,10 +21,13 @@ impl std::fmt::Display for EnumSchema {
 }
 
 impl Validator for EnumSchema {
-    fn validate(&self, context: &Context, value: &saphyr::Yaml) -> Result<()> {
+    fn validate(&self, context: &Context, value: &saphyr::MarkedYaml) -> Result<()> {
         debug!("[EnumSchema] self: {}", self);
-        debug!("[EnumSchema] Validating value: {:?}", value);
-        let const_value = ConstValue::from_saphyr_yaml(value);
+        let data = &value.data;
+        debug!("[EnumSchema] Validating value: {:?}", data);
+        let const_value: ConstValue = data.try_into().map_err(|_| {
+            Error::GenericError(format!("Unable to convert value: {:?} to ConstValue", data))
+        })?;
         debug!("[EnumSchema] const_value: {}", const_value);
         for value in &self.r#enum {
             debug!("[EnumSchema] value: {}", value);
@@ -32,7 +36,7 @@ impl Validator for EnumSchema {
             }
         }
         if !self.r#enum.contains(&const_value) {
-            let value_str = format_saphyr_yaml_value(value);
+            let value_str = format_yaml_data(data);
             let enum_values = self
                 .r#enum
                 .iter()
@@ -56,9 +60,10 @@ mod tests {
         let schema = EnumSchema {
             r#enum: vec![ConstValue::String("NW".to_string())],
         };
-        let value = saphyr::Yaml::String("NW".to_string());
+        let docs = saphyr::MarkedYaml::load_from_str("NW").unwrap();
+        let value = docs.first().unwrap();
         let context = Context::default();
-        let result = schema.validate(&context, &value);
+        let result = schema.validate(&context, value);
         assert!(result.is_ok());
     }
 }

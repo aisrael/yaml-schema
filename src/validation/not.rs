@@ -5,7 +5,7 @@ use crate::Result;
 use log::debug;
 
 impl Validator for NotSchema {
-    fn validate(&self, context: &Context, value: &saphyr::Yaml) -> Result<()> {
+    fn validate(&self, context: &Context, value: &saphyr::MarkedYaml) -> Result<()> {
         debug!(
             "Not: Validating value: {:?} against schema: {}",
             value, self.not
