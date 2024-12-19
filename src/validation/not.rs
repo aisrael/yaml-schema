@@ -19,7 +19,7 @@ impl Validator for NotSchema {
             Ok(()) | Err(crate::Error::FailFast) => {
                 // If the inner schema validates successfully, then this is an error for 'not'
                 if !sub_context.has_errors() {
-                    context.add_error("Value matches schema in `not`");
+                    context.add_error(value, "Value matches schema in `not`");
                     fail_fast!(context);
                 }
             }

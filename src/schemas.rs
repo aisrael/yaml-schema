@@ -93,7 +93,7 @@ impl Validator for TypedSchema {
             TypedSchema::BooleanSchema => Ok(()),
             TypedSchema::Null => {
                 if !value.data.is_null() {
-                    context.add_error(format!("Expected null, but got: {:?}", value));
+                    context.add_error(value, format!("Expected null, but got: {:?}", value));
                 }
                 Ok(())
             }

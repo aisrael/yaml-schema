@@ -34,13 +34,13 @@ impl Validator for ConstSchema {
                         "Const validation failed, expected: {:?}, got: {:?}",
                         b, data
                     );
-                    context.add_error(error);
+                    context.add_error(value, error);
                 }
             }
             ConstValue::Null => {
                 if !data.is_null() {
                     let error = format!("Const validation failed, expected: null, got: {:?}", data);
-                    context.add_error(error);
+                    context.add_error(value, error);
                 }
             }
             ConstValue::Number(n) => match n {
@@ -51,14 +51,14 @@ impl Validator for ConstSchema {
                                 "Const validation failed, expected: {:?}, got: {:?}",
                                 i, data
                             );
-                            context.add_error(error);
+                            context.add_error(value, error);
                         }
                     } else {
                         let error = format!(
                             "Const validation failed, expected: {:?}, got: {:?}",
                             i, data
                         );
-                        context.add_error(error);
+                        context.add_error(value, error);
                     }
                 }
                 Number::Float(f) => {
@@ -68,14 +68,14 @@ impl Validator for ConstSchema {
                                 "Const validation failed, expected: {:?}, got: {:?}",
                                 f, data
                             );
-                            context.add_error(error);
+                            context.add_error(value, error);
                         }
                     } else {
                         let error = format!(
                             "Const validation failed, expected: {:?}, got: {:?}",
                             f, data
                         );
-                        context.add_error(error);
+                        context.add_error(value, error);
                     }
                 }
             },
@@ -85,7 +85,7 @@ impl Validator for ConstSchema {
                         "Const validation failed, expected: {:?}, got: {:?}",
                         s, data
                     );
-                    context.add_error(error);
+                    context.add_error(value, error);
                 }
             }
         }

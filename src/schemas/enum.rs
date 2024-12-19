@@ -45,7 +45,7 @@ impl Validator for EnumSchema {
                 .join(", ");
             let error = format!("Value {} is not in the enum: [{}]", value_str, enum_values);
             debug!("[EnumSchema] error: {}", error);
-            context.add_error(error);
+            context.add_error(value, error);
         }
         Ok(())
     }

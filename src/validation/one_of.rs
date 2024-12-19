@@ -11,7 +11,7 @@ impl Validator for crate::schemas::OneOfSchema {
         let one_of_is_valid = validate_one_of(context, &self.one_of, value)?;
         if !one_of_is_valid {
             error!("OneOf: None of the schemas in `oneOf` matched!");
-            context.add_error("None of the schemas in `oneOf` matched!");
+            context.add_error(value, "None of the schemas in `oneOf` matched!");
             fail_fast!(context);
         }
         Ok(())
@@ -43,7 +43,7 @@ pub fn validate_one_of(
 
                 if one_of_is_valid {
                     error!("OneOf: Value matched multiple schemas in `oneOf`!");
-                    context.add_error("Value matched multiple schemas in `oneOf`!");
+                    context.add_error(value, "Value matched multiple schemas in `oneOf`!");
                     fail_fast!(context);
                 } else {
                     one_of_is_valid = true;

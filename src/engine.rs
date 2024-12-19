@@ -40,13 +40,13 @@ impl<'a> Engine<'a> {
                     engine
                         .context
                         .borrow_mut()
-                        .add_error("Empty YAML document is not allowed");
+                        .add_doc_error("Empty YAML document is not allowed");
                 }
                 YamlSchema::BooleanLiteral(true) => (),
                 _ => engine
                     .context
                     .borrow_mut()
-                    .add_error("Empty YAML document is not allowed"),
+                    .add_doc_error("Empty YAML document is not allowed"),
             }
         } else {
             let yaml = docs.first().unwrap();

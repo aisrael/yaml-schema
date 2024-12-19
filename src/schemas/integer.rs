@@ -28,26 +28,27 @@ impl Validator for IntegerSchema {
         let data = &value.data;
         if data.is_integer() {
             match data.as_i64() {
-                Some(i) => self.validate_number_i64(context, i),
+                Some(i) => self.validate_number_i64(context, value, i),
                 None => {
-                    context.add_error(format!("Expected an integer, but got: {:?}", data));
+                    context.add_error(value, format!("Expected an integer, but got: {:?}", data));
                 }
             }
         } else if data.is_real() {
             match data.as_f64() {
                 Some(f) => {
                     if f.fract() == 0.0 {
-                        self.validate_number_i64(context, f as i64);
+                        self.validate_number_i64(context, value, f as i64);
                     } else {
-                        context.add_error(format!("Expected an integer, but got: {:?}", data));
+                        context
+                            .add_error(value, format!("Expected an integer, but got: {:?}", data));
                     }
                 }
                 None => {
-                    context.add_error(format!("Expected a float, but got: {:?}", data));
+                    context.add_error(value, format!("Expected a float, but got: {:?}", data));
                 }
             }
         } else {
-            context.add_error(format!("Expected a number, but got: {:?}", data));
+            context.add_error(value, format!("Expected a number, but got: {:?}", data));
         }
         if !context.errors.borrow().is_empty() {
             fail_fast!(context)
@@ -57,17 +58,17 @@ impl Validator for IntegerSchema {
 }
 
 impl IntegerSchema {
-    fn validate_number_i64(&self, context: &Context, i: i64) {
+    fn validate_number_i64(&self, context: &Context, value: &saphyr::MarkedYaml, i: i64) {
         if let Some(minimum) = &self.minimum {
             match minimum {
                 Number::Integer(min) => {
                     if i < *min {
-                        context.add_error("Number is too small!".to_string());
+                        context.add_error(value, "Number is too small!".to_string());
                     }
                 }
                 Number::Float(min) => {
                     if (i as f64) < *min {
-                        context.add_error("Number is too small!".to_string());
+                        context.add_error(value, "Number is too small!".to_string());
                     }
                 }
             }
@@ -76,12 +77,12 @@ impl IntegerSchema {
             match maximum {
                 Number::Integer(max) => {
                     if i > *max {
-                        context.add_error("Number is too big!".to_string());
+                        context.add_error(value, "Number is too big!".to_string());
                     }
                 }
                 Number::Float(max) => {
                     if (i as f64) > *max {
-                        context.add_error("Number is too big!".to_string());
+                        context.add_error(value, "Number is too big!".to_string());
                     }
                 }
             }
@@ -90,12 +91,14 @@ impl IntegerSchema {
             match multiple_of {
                 Number::Integer(multiple) => {
                     if i % *multiple != 0 {
-                        context.add_error(format!("Number is not a multiple of {}!", multiple));
+                        context
+                            .add_error(value, format!("Number is not a multiple of {}!", multiple));
                     }
                 }
                 Number::Float(multiple) => {
                     if (i as f64) % *multiple != 0.0 {
-                        context.add_error(format!("Number is not a multiple of {}!", multiple));
+                        context
+                            .add_error(value, format!("Number is not a multiple of {}!", multiple));
                     }
                 }
             }

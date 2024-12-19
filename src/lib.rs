@@ -277,6 +277,10 @@ fn format_yaml_data(data: &saphyr::YamlData<saphyr::MarkedYaml>) -> String {
     }
 }
 
+fn format_marker(marker: &saphyr::Marker) -> String {
+    format!("[{}, {}]", marker.line(), marker.col())
+}
+
 /// Use the ctor crate to initialize the logger for tests
 #[cfg(test)]
 #[ctor::ctor]

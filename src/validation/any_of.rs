@@ -11,7 +11,7 @@ impl Validator for crate::schemas::AnyOfSchema {
         let any_of_is_valid = validate_any_of(&self.any_of, value)?;
         if !any_of_is_valid {
             error!("AnyOf: None of the schemas in `oneOf` matched!");
-            context.add_error("None of the schemas in `oneOf` matched!");
+            context.add_error(value, "None of the schemas in `oneOf` matched!");
             fail_fast!(context);
         }
         Ok(())

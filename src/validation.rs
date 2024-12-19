@@ -16,11 +16,28 @@ pub trait Validator {
     fn validate(&self, context: &Context, value: &saphyr::MarkedYaml) -> Result<()>;
 }
 
+#[derive(Debug)]
+pub struct LineCol {
+    pub line: usize,
+    pub col: usize,
+}
+
+impl From<&saphyr::MarkedYaml> for LineCol {
+    fn from(value: &saphyr::MarkedYaml) -> Self {
+        LineCol {
+            line: value.span.start.line(),
+            col: value.span.start.col() + 1, // contrary to the documentation, columns are 0-indexed
+        }
+    }
+}
+
 /// A validation error simply contains a path and an error message
 #[derive(Debug)]
 pub struct ValidationError {
     /// The path to the value that caused the error
     pub path: String,
+    /// The line and column of the value that caused the error
+    pub line_col: Option<LineCol>,
     /// The error message
     pub error: String,
 }
@@ -28,7 +45,15 @@ pub struct ValidationError {
 /// Display this ValidationErrors as "{path}: {error}"
 impl std::fmt::Display for ValidationError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}: {}", self.path, self.error)
+        if let Some(line_col) = &self.line_col {
+            write!(
+                f,
+                "[{}:{}] .{}: {}",
+                line_col.line, line_col.col, self.path, self.error
+            )
+        } else {
+            write!(f, ".{}: {}", self.path, self.error)
+        }
     }
 }
 
@@ -40,13 +65,13 @@ impl Validator for YamlSchema {
             YamlSchema::Empty => Ok(()),
             YamlSchema::TypeNull => {
                 if !value.data.is_null() {
-                    context.add_error(format!("Expected null, but got: {:?}", value.data));
+                    context.add_error(value, format!("Expected null, but got: {:?}", value.data));
                 }
                 Ok(())
             }
             YamlSchema::BooleanLiteral(boolean) => {
                 if !*boolean {
-                    context.add_error("Schema is `false`!".to_string());
+                    context.add_error(value, "Schema is `false`!".to_string());
                 }
                 Ok(())
             }
@@ -67,7 +92,7 @@ impl Validator for YamlSchema {
 
 fn validate_boolean_schema(context: &Context, value: &saphyr::MarkedYaml) -> Result<()> {
     if !value.data.is_boolean() {
-        context.add_error(format!("Expected: boolean, found: {:?}", value));
+        context.add_error(value, format!("Expected: boolean, found: {:?}", value));
     }
     Ok(())
 }

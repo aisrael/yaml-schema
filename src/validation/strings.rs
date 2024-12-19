@@ -16,7 +16,7 @@ impl Validator for StringSchema {
         );
         if !errors.is_empty() {
             for error in errors {
-                context.add_error(error);
+                context.add_error(value, error);
             }
         }
         Ok(())

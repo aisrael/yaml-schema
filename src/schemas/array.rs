@@ -33,7 +33,7 @@ impl Validator for ArraySchema {
         debug!("[ArraySchema] Validating value: {:?}", data);
 
         if !data.is_array() {
-            context.add_error(format!("Expected an array, but got: {:?}", value));
+            context.add_error(value, format!("Expected an array, but got: {:?}", value));
             fail_fast!(context);
             return Ok(());
         }
@@ -46,7 +46,7 @@ impl Validator for ArraySchema {
                 let sub_context = Context::new(true);
                 sub_schema.validate(&sub_context, item).is_ok()
             }) {
-                context.add_error("Contains validation failed!".to_string());
+                context.add_error(value, "Contains validation failed!".to_string());
             }
         }
 
@@ -76,8 +76,10 @@ impl Validator for ArraySchema {
                             break;
                         }
                         BoolOrTypedSchema::Boolean(false) => {
-                            context
-                                .add_error("Additional array items are not allowed!".to_string());
+                            context.add_error(
+                                item,
+                                "Additional array items are not allowed!".to_string(),
+                            );
                         }
                         BoolOrTypedSchema::TypedSchema(typed_schema) => {
                             typed_schema.validate(context, item)?;
@@ -93,8 +95,11 @@ impl Validator for ArraySchema {
                 match items {
                     BoolOrTypedSchema::Boolean(true) => { /* no-op */ }
                     BoolOrTypedSchema::Boolean(false) => {
-                        if self.prefix_items.is_none() {
-                            context.add_error("Array items are not allowed!".to_string());
+                        if self.prefix_items.is_none() && !array.is_empty() {
+                            context.add_error(
+                                array.first().unwrap(),
+                                "Array items are not allowed!".to_string(),
+                            );
                         }
                     }
                     BoolOrTypedSchema::TypedSchema(typed_schema) => {
