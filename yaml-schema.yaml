@@ -44,7 +44,6 @@ properties:
         properties:
           description:
             type: string
-
   additionalProperties:
     oneOf:
       - type: boolean
