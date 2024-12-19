@@ -2,11 +2,14 @@ name: CI Tests
 on:
   push:
     paths:
-      - "src/**"
-      - "Cargo.*"
-      - "test/**"
-      - "features/**"
-      - ".github/workflows/ci-tests.yml"
+      - src/**
+      - Cargo.*
+      - test/**
+      - features/**
+      - .github/workflows/ci-tests.yml
+
+permissions:
+  contents: write
 
 env:
   # We use environment variables to specify the Rust version and other settings once
