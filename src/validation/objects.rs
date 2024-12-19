@@ -2,6 +2,7 @@
 use log::debug;
 use std::collections::HashMap;
 
+use crate::format_marker;
 use crate::schemas::BoolOrTypedSchema;
 use crate::schemas::ObjectSchema;
 use crate::validation::Context;
@@ -10,10 +11,25 @@ use crate::Result;
 use crate::Validator;
 use crate::YamlSchema;
 
+impl Validator for ObjectSchema {
+    /// Validate the object according to the schema rules
+    fn validate(&self, context: &Context, value: &saphyr::MarkedYaml) -> Result<()> {
+        let data = &value.data;
+        debug!("Validating object: {:?}", data);
+        match data {
+            saphyr::YamlData::Hash(hash) => self.validate_object_mapping(context, value, hash),
+            other => {
+                context.add_error(value, format!("Expected an object, but got: {:#?}", other));
+                Ok(())
+            }
+        }
+    }
+}
+
 pub fn try_validate_value_against_properties(
     context: &Context,
     key: &String,
-    value: &saphyr::Yaml,
+    value: &saphyr::MarkedYaml,
     properties: &HashMap<String, YamlSchema>,
 ) -> Result<bool> {
     let sub_context = context.append_path(key);
@@ -34,7 +50,7 @@ pub fn try_validate_value_against_properties(
 pub fn try_validate_value_against_additional_properties(
     context: &Context,
     key: &String,
-    value: &saphyr::Yaml,
+    value: &saphyr::MarkedYaml,
     additional_properties: &BoolOrTypedSchema,
 ) -> Result<bool> {
     let sub_context = context.append_path(key);
@@ -44,7 +60,10 @@ pub fn try_validate_value_against_additional_properties(
         BoolOrTypedSchema::Boolean(true) => { /* noop */ }
         // if additional_properties: false, then no additional properties are allowed
         BoolOrTypedSchema::Boolean(false) => {
-            context.add_error(format!("Additional property '{}' is not allowed!", key));
+            context.add_error(
+                value,
+                format!("Additional property '{}' is not allowed!", key),
+            );
             // returning `false` signals fail fast
             return Ok(false);
         }
@@ -56,28 +75,28 @@ pub fn try_validate_value_against_additional_properties(
     Ok(true)
 }
 
-impl Validator for ObjectSchema {
-    /// Validate the object according to the schema rules
-    fn validate(&self, context: &Context, value: &saphyr::Yaml) -> Result<()> {
-        debug!("Validating object: {:?}", value);
-        match value {
-            saphyr::Yaml::Hash(hash) => self.validate_object_mapping(context, hash),
-            other => {
-                context.add_error(format!("Expected an object, but got: {:#?}", other));
-                Ok(())
-            }
-        }
-    }
-}
-
 impl ObjectSchema {
-    fn validate_object_mapping(&self, context: &Context, mapping: &saphyr::Hash) -> Result<()> {
+    fn validate_object_mapping(
+        &self,
+        context: &Context,
+        object: &saphyr::MarkedYaml,
+        mapping: &saphyr::AnnotatedHash<saphyr::MarkedYaml>,
+    ) -> Result<()> {
         for (k, value) in mapping {
-            let key = match k {
-                saphyr::Yaml::String(s) => s.clone(),
-                _ => k.as_str().unwrap_or_default().to_string(),
+            let key = match &k.data {
+                saphyr::YamlData::String(s) => s.clone(),
+                _ => k.data.as_str().unwrap_or_default().to_string(),
             };
+            let span = &k.span;
             debug!("validate_object_mapping: key: \"{}\"", key);
+            debug!(
+                "validate_object_mapping: span.start: {:?}",
+                format_marker(&span.start)
+            );
+            debug!(
+                "validate_object_mapping: span.end: {:?}",
+                format_marker(&span.end)
+            );
             // First, we check the explicitly defined properties, and validate against it if found
             if let Some(properties) = &self.properties {
                 if try_validate_value_against_properties(context, &key, value, properties)? {
@@ -113,10 +132,14 @@ impl ObjectSchema {
                 })?;
                 debug!("Regex for property names: {}", re.as_str());
                 if !re.is_match(key.as_str()) {
-                    context.add_error(format!(
-                        "Property name '{}' does not match pattern specified in `propertyNames`!",
-                        key
-                    ));
+                    context.add_error(
+                        k,
+                        format!(
+                            "Property name '{}' does not match pattern '{}'",
+                            key,
+                            re.as_str()
+                        ),
+                    );
                     fail_fast!(context)
                 }
             }
@@ -125,12 +148,15 @@ impl ObjectSchema {
         // Validate required properties
         if let Some(required) = &self.required {
             for required_property in required {
-                let key = saphyr::Yaml::String(required_property.clone());
-                if !mapping.contains_key(&key) {
-                    context.add_error(format!(
-                        "Required property '{}' is missing!",
-                        required_property
-                    ));
+                if !mapping
+                    .keys()
+                    .map(|k| k.data.as_str().unwrap())
+                    .any(|s| s == required_property)
+                {
+                    context.add_error(
+                        object,
+                        format!("Required property '{}' is missing!", required_property),
+                    );
                     fail_fast!(context)
                 }
             }
@@ -139,20 +165,26 @@ impl ObjectSchema {
         // Validate minProperties
         if let Some(min_properties) = &self.min_properties {
             if mapping.len() < *min_properties {
-                context.add_error(format!(
-                    "Object has too few properties! Minimum is {}!",
-                    min_properties
-                ));
+                context.add_error(
+                    object,
+                    format!(
+                        "Object has too few properties! Minimum is {}!",
+                        min_properties
+                    ),
+                );
                 fail_fast!(context)
             }
         }
         // Validate maxProperties
         if let Some(max_properties) = &self.max_properties {
             if mapping.len() > *max_properties {
-                context.add_error(format!(
-                    "Object has too many properties! Maximum is {}!",
-                    max_properties
-                ));
+                context.add_error(
+                    object,
+                    format!(
+                        "Object has too many properties! Maximum is {}!",
+                        max_properties
+                    ),
+                );
                 fail_fast!(context)
             }
         }

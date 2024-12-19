@@ -32,7 +32,7 @@ impl<'a> Engine<'a> {
             ..Default::default()
         };
         let engine = Engine::new(root_schema, context);
-        let docs = saphyr::Yaml::load_from_str(value).map_err(Error::YamlParsingError)?;
+        let docs = saphyr::MarkedYaml::load_from_str(value).map_err(Error::YamlParsingError)?;
         if docs.is_empty() {
             match root_schema.schema.as_ref() {
                 YamlSchema::Empty => (),
@@ -40,13 +40,13 @@ impl<'a> Engine<'a> {
                     engine
                         .context
                         .borrow_mut()
-                        .add_error("Empty YAML document is not allowed");
+                        .add_doc_error("Empty YAML document is not allowed");
                 }
                 YamlSchema::BooleanLiteral(true) => (),
                 _ => engine
                     .context
                     .borrow_mut()
-                    .add_error("Empty YAML document is not allowed"),
+                    .add_doc_error("Empty YAML document is not allowed"),
             }
         } else {
             let yaml = docs.first().unwrap();

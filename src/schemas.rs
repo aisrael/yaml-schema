@@ -85,15 +85,15 @@ impl fmt::Display for TypedSchema {
 }
 
 impl Validator for TypedSchema {
-    fn validate(&self, context: &crate::Context, value: &saphyr::Yaml) -> Result<()> {
+    fn validate(&self, context: &crate::Context, value: &saphyr::MarkedYaml) -> Result<()> {
         debug!("[TypedSchema] self: {}", self);
         debug!("[TypedSchema] Validating value: {:?}", value);
         match self {
             TypedSchema::Array(a) => a.validate(context, value),
             TypedSchema::BooleanSchema => Ok(()),
             TypedSchema::Null => {
-                if !value.is_null() {
-                    context.add_error(format!("Expected null, but got: {:?}", value));
+                if !value.data.is_null() {
+                    context.add_error(value, format!("Expected null, but got: {:?}", value));
                 }
                 Ok(())
             }

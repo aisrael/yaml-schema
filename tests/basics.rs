@@ -37,14 +37,16 @@ fn evaluate(world: &mut BasicsWorld, s: &str) -> Result<bool> {
 #[then(regex = "it should accept:")]
 async fn it_should_accept(world: &mut BasicsWorld, step: &Step) {
     let raw_input = step.docstring().unwrap();
-    let result = evaluate(world, raw_input).unwrap();
+    let input_without_beginning_newline = raw_input.strip_prefix('\n').unwrap();
+    let result = evaluate(world, input_without_beginning_newline).unwrap();
     assert!(result);
 }
 
 #[then(regex = "it should NOT accept:")]
 async fn it_should_not_accept(world: &mut BasicsWorld, step: &Step) {
     let raw_input = step.docstring().unwrap();
-    let result = evaluate(world, raw_input).unwrap();
+    let input_without_beginning_newline = raw_input.strip_prefix('\n').unwrap();
+    let result = evaluate(world, input_without_beginning_newline).unwrap();
     assert!(!result);
 }
 
@@ -53,7 +55,7 @@ fn the_error_message_should_be(world: &mut BasicsWorld, expected_error_message: 
     let errors = world.errors.as_ref().unwrap().borrow();
     if !errors.is_empty() {
         let first_error = errors.first().unwrap();
-        let actual_error_message = format!(".{}: {}", first_error.path, first_error.error);
+        let actual_error_message = first_error.to_string();
         assert_eq!(actual_error_message, expected_error_message);
     } else {
         panic!("Expected an error message, but there was no error!");

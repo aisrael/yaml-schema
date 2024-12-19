@@ -37,10 +37,20 @@ impl Context {
         self.errors.borrow_mut().push(error);
     }
 
-    pub fn add_error<V: Into<String>>(&self, error: V) {
+    pub fn add_doc_error<V: Into<String>>(&self, error: V) {
         let path = self.path();
         self.push_error(ValidationError {
             path,
+            line_col: None,
+            error: error.into(),
+        });
+    }
+
+    pub fn add_error<V: Into<String>>(&self, marked_yaml: &saphyr::MarkedYaml, error: V) {
+        let path = self.path();
+        self.push_error(ValidationError {
+            path,
+            line_col: Some(marked_yaml.into()),
             error: error.into(),
         });
     }

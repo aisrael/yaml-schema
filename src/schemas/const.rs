@@ -20,72 +20,72 @@ impl std::fmt::Display for ConstSchema {
 }
 
 impl Validator for ConstSchema {
-    fn validate(&self, context: &Context, value: &saphyr::Yaml) -> Result<()> {
+    fn validate(&self, context: &Context, value: &saphyr::MarkedYaml) -> Result<()> {
+        let data = &value.data;
         debug!(
             "Validating value: {:?} against const: {:?}",
-            value, self.r#const
+            &data, self.r#const
         );
         let expected_value = &self.r#const;
         match expected_value {
             ConstValue::Boolean(b) => {
-                if value.as_bool() != Some(*b) {
+                if data.as_bool() != Some(*b) {
                     let error = format!(
                         "Const validation failed, expected: {:?}, got: {:?}",
-                        b, value
+                        b, data
                     );
-                    context.add_error(error);
+                    context.add_error(value, error);
                 }
             }
             ConstValue::Null => {
-                if !value.is_null() {
-                    let error =
-                        format!("Const validation failed, expected: null, got: {:?}", value);
-                    context.add_error(error);
+                if !data.is_null() {
+                    let error = format!("Const validation failed, expected: null, got: {:?}", data);
+                    context.add_error(value, error);
                 }
             }
             ConstValue::Number(n) => match n {
                 Number::Integer(i) => {
-                    if value.is_integer() {
-                        if value.as_i64() != Some(*i) {
+                    if data.is_integer() {
+                        if data.as_i64() != Some(*i) {
                             let error = format!(
                                 "Const validation failed, expected: {:?}, got: {:?}",
-                                i, value
+                                i, data
                             );
-                            context.add_error(error);
+                            context.add_error(value, error);
                         }
                     } else {
                         let error = format!(
                             "Const validation failed, expected: {:?}, got: {:?}",
-                            i, value
+                            i, data
                         );
-                        context.add_error(error);
+                        context.add_error(value, error);
                     }
                 }
                 Number::Float(f) => {
-                    if value.is_real() {
-                        if value.as_f64() != Some(*f) {
+                    if data.is_real() {
+                        if data.as_f64() != Some(*f) {
                             let error = format!(
                                 "Const validation failed, expected: {:?}, got: {:?}",
-                                f, value
+                                f, data
                             );
-                            context.add_error(error);
+                            context.add_error(value, error);
                         }
                     } else {
                         let error = format!(
                             "Const validation failed, expected: {:?}, got: {:?}",
-                            f, value
+                            f, data
                         );
-                        context.add_error(error);
+                        context.add_error(value, error);
                     }
                 }
             },
             ConstValue::String(s) => {
-                if value.as_str() != Some(s) {
+                if data.as_str() != Some(s) {
                     let error = format!(
                         "Const validation failed, expected: {:?}, got: {:?}",
-                        s, value
+                        s, data
                     );
-                    context.add_error(error);
+                    context.add_error(value, error);
                 }
             }
         }
