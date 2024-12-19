@@ -649,6 +649,24 @@ impl Constructor<StringSchema> for StringSchema {
                             return Err(unsupported_type!("Expected type: string, but got: {}", s));
                         }
                     }
+                    "enum" => {
+                        if let saphyr::Yaml::Array(values) = value {
+                            let enum_values = load_enum_values(values)?;
+                            let string_enum_values = enum_values
+                                .iter()
+                                .map(|v| match v {
+                                    ConstValue::String(s) => Ok(s.clone()),
+                                    _ => Ok(format!("{}", v)),
+                                })
+                                .collect::<Result<Vec<String>>>()?;
+                            string_schema.r#enum = Some(string_enum_values);
+                        } else {
+                            return Err(unsupported_type!(
+                                "enum expected array, but got: {:?}",
+                                value
+                            ));
+                        }
+                    }
                     _ => unimplemented!("Unsupported key for type: string: {}", key),
                 }
             }
