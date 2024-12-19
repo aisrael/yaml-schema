@@ -3,6 +3,16 @@ $id: https://yaml-schema.net/draft/2020-12/meta-schema
 title: YAML Schema meta-schema
 description: Meta-schema for YAML Schema, based on JSON Schema meta-schema
 type: object
+$defs:
+  object:
+    description: |
+      A meta schema for a YAML object schema.
+    type: object
+    properties:
+      type:
+        description: The type of the schema
+        enum:
+          - object
 properties:
   $schema:
     description: Specifies which draft of the JSON Schema standard the schema adheres to.
@@ -12,6 +22,12 @@ properties:
       Sets a URI for the schema. You can use this unique URI to refer to elements of the
       schema from inside the same document or from external JSON documents.
     type: string
+  $defs:
+    description: A container for reusable JSON Schema fragments.
+    type: object
+    patternProperties:
+      "^[a-zA-Z0-9_-]+$":
+        type: object
   title:
     description: The title of the schema
     type: string

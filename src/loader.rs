@@ -71,6 +71,7 @@ struct RootLoader {
     pub id: Option<String>,
     pub meta_schema: Option<String>,
     pub title: Option<String>,
+    pub defs: Option<LinkedHashMap<String, YamlSchema>>,
     pub description: Option<String>,
     pub schema: Option<YamlSchema>,
 }
@@ -102,6 +103,18 @@ impl RootLoader {
                         self.description =
                             Some(yaml_to_string(value, "description must be a string")?)
                     }
+                    "$defs" => {
+                        let hash = value.as_hash().ok_or_else(|| {
+                            unsupported_type!("Expected a hash, but got: {:#?}", value)
+                        })?;
+                        let mut defs = LinkedHashMap::new();
+                        for (key, value) in hash.iter() {
+                            let schema = YamlSchema::construct(value.as_hash().unwrap())?;
+                            let key_string = yaml_to_string(key, "key must be a string")?;
+                            defs.insert(key_string, schema);
+                        }
+                        self.defs = Some(defs);
+                    }
                     _ => {
                         data.insert(key.clone(), value.clone());
                     }
@@ -113,6 +126,20 @@ impl RootLoader {
         }
         self.schema = Some(YamlSchema::construct(&data)?);
         Ok(())
+    }
+}
+
+
+/// Convert a Loader to a RootSchema
+/// Just sets the schema to a YamlSchema::Empty if the loader schema is None
+impl From<RootLoader> for RootSchema {
+    fn from(loader: RootLoader) -> Self {
+        RootSchema {
+            id: loader.id,
+            meta_schema: loader.meta_schema,
+            defs: loader.defs,
+            schema: Rc::new(loader.schema.unwrap_or(YamlSchema::empty())),
+        }
     }
 }
 
@@ -139,7 +166,7 @@ impl Constructor<Schema> for Schema {
             let not_schema = NotSchema::construct(hash)?;
             return Ok(Schema::Not(not_schema));
         } else {
-            unimplemented!("No schema type found in hash: {:#?}", hash)
+            return Ok(Schema::Empty);
         }
     }
 }
@@ -687,18 +714,6 @@ fn load_array_items(value: &saphyr::Yaml) -> Result<BoolOrTypedSchema> {
 
 fn load_enum_values(values: &[saphyr::Yaml]) -> Result<Vec<ConstValue>> {
     Ok(values.iter().map(ConstValue::from_saphyr_yaml).collect())
-}
-
-/// Convert a Loader to a RootSchema
-/// Just sets the schema to a YamlSchema::Empty if the loader schema is None
-impl From<RootLoader> for RootSchema {
-    fn from(loader: RootLoader) -> Self {
-        RootSchema {
-            id: loader.id,
-            meta_schema: loader.meta_schema,
-            schema: Rc::new(loader.schema.unwrap_or(YamlSchema::empty())),
-        }
-    }
 }
 
 fn yaml_to_string<S: Into<String> + Copy>(yaml: &saphyr::Yaml, msg: S) -> Result<String> {

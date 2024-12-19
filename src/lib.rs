@@ -39,6 +39,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 pub struct RootSchema {
     pub id: Option<String>,
     pub meta_schema: Option<String>,
+    pub defs: Option<LinkedHashMap<String, YamlSchema>>,
     pub schema: Rc<YamlSchema>,
 }
 
@@ -48,6 +49,7 @@ impl RootSchema {
         RootSchema {
             id: None,
             meta_schema: None,
+            defs: None,
             schema: Rc::new(schema),
         }
     }
