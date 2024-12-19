@@ -6,7 +6,7 @@ on:
       - Cargo.*
       - test/**
       - features/**
-      - .github/workflows/ci-tests.yml
+      - .github/workflows/ci-tests.yaml
 
 permissions:
   contents: write
