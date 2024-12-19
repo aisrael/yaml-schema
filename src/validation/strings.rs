@@ -64,14 +64,14 @@ pub fn validate_string(
 mod tests {
     use crate::Engine;
     use crate::RootSchema;
-    use crate::YamlSchema;
+    use crate::Schema;
 
     use super::*;
 
     #[test]
     fn test_engine_validate_string() {
         let schema = StringSchema::default();
-        let root_schema = RootSchema::new(YamlSchema::String(schema));
+        let root_schema = RootSchema::new_with_schema(Schema::String(schema));
         let context = Engine::evaluate(&root_schema, "some string", false).unwrap();
         assert!(!context.has_errors());
     }
@@ -82,7 +82,7 @@ mod tests {
             min_length: Some(5),
             ..Default::default()
         };
-        let root_schema = RootSchema::new(YamlSchema::String(schema));
+        let root_schema = RootSchema::new_with_schema(Schema::String(schema));
         let context = Engine::evaluate(&root_schema, "hello", false).unwrap();
         assert!(!context.has_errors());
         let context = Engine::evaluate(&root_schema, "hell", false).unwrap();

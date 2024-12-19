@@ -5,7 +5,7 @@ use crate::validation::Context;
 use crate::Error;
 use crate::Result;
 use crate::RootSchema;
-use crate::YamlSchema;
+use crate::Schema;
 
 #[derive(Debug)]
 pub struct Engine<'a> {
@@ -34,15 +34,15 @@ impl<'a> Engine<'a> {
         let engine = Engine::new(root_schema, context);
         let docs = saphyr::MarkedYaml::load_from_str(value).map_err(Error::YamlParsingError)?;
         if docs.is_empty() {
-            match root_schema.schema.as_ref() {
-                YamlSchema::Empty => (),
-                YamlSchema::BooleanLiteral(false) => {
+            match root_schema.schema.as_ref().schema {
+                Schema::Empty => (),
+                Schema::BooleanLiteral(false) => {
                     engine
                         .context
                         .borrow_mut()
                         .add_doc_error("Empty YAML document is not allowed");
                 }
-                YamlSchema::BooleanLiteral(true) => (),
+                Schema::BooleanLiteral(true) => (),
                 _ => engine
                     .context
                     .borrow_mut()
@@ -61,24 +61,25 @@ impl<'a> Engine<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::YamlSchema;
 
     #[test]
     fn test_engine_empty_schema() {
-        let root_schema = RootSchema::new(YamlSchema::Empty);
+        let root_schema = RootSchema::new(YamlSchema::empty());
         let context = Engine::evaluate(&root_schema, "", false).unwrap();
         assert!(!context.has_errors());
     }
 
     #[test]
     fn test_engine_boolean_literal_true() {
-        let root_schema = RootSchema::new(YamlSchema::BooleanLiteral(true));
+        let root_schema = RootSchema::new(YamlSchema::boolean_literal(true));
         let context = Engine::evaluate(&root_schema, "", false).unwrap();
         assert!(!context.has_errors());
     }
 
     #[test]
     fn test_engine_boolean_literal_false() {
-        let root_schema = RootSchema::new(YamlSchema::BooleanLiteral(false));
+        let root_schema = RootSchema::new(YamlSchema::boolean_literal(false));
         let context = Engine::evaluate(&root_schema, "", false).unwrap();
         assert!(context.has_errors());
     }

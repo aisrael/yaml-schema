@@ -118,14 +118,19 @@ impl Validator for ArraySchema {
 #[cfg(test)]
 mod tests {
     use crate::loader::Constructor;
-    use crate::{schemas::TypedSchema, NumberSchema, StringSchema};
+    use crate::NumberSchema;
+    use crate::Schema;
+    use crate::StringSchema;
+    use crate::TypedSchema;
 
     use super::*;
 
     #[test]
     fn test_array_schema_prefix_items() {
         let schema = ArraySchema {
-            prefix_items: Some(vec![YamlSchema::Number(NumberSchema::default())]),
+            prefix_items: Some(vec![YamlSchema::from(Schema::Number(
+                NumberSchema::default(),
+            ))]),
             items: Some(BoolOrTypedSchema::TypedSchema(Box::new(
                 TypedSchema::String(StringSchema::default()),
             ))),
@@ -187,8 +192,9 @@ mod tests {
 
     #[test]
     fn test_contains() {
+        let number_schema = YamlSchema::from(Schema::Number(NumberSchema::default()));
         let schema = ArraySchema {
-            contains: Some(Box::new(YamlSchema::Number(NumberSchema::default()))),
+            contains: Some(Box::new(number_schema)),
             ..Default::default()
         };
         let s = r#"

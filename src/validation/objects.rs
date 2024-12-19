@@ -198,6 +198,7 @@ mod tests {
     use crate::engine;
     use crate::NumberSchema;
     use crate::RootSchema;
+    use crate::Schema;
     use crate::StringSchema;
 
     use super::*;
@@ -207,18 +208,17 @@ mod tests {
         let mut properties = HashMap::new();
         properties.insert(
             "foo".to_string(),
-            YamlSchema::String(StringSchema::default()),
+            YamlSchema::from(Schema::String(StringSchema::default())),
         );
         properties.insert(
             "bar".to_string(),
-            YamlSchema::Number(NumberSchema::default()),
+            YamlSchema::from(Schema::Number(NumberSchema::default())),
         );
-        let schema = ObjectSchema {
+        let object_schema = ObjectSchema {
             properties: Some(properties),
             ..Default::default()
         };
-        let yaml_schema = YamlSchema::Object(schema);
-        let root_schema = RootSchema::new(yaml_schema);
+        let root_schema = RootSchema::new_with_schema(Schema::Object(object_schema));
         let value = r#"
             foo: "I'm a string"
             bar: 42

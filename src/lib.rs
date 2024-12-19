@@ -9,6 +9,7 @@ pub mod validation;
 
 pub use engine::Engine;
 pub use error::Error;
+use hashlink::LinkedHashMap;
 pub use schemas::AnyOfSchema;
 pub use schemas::ArraySchema;
 pub use schemas::BoolOrTypedSchema;
@@ -42,13 +43,18 @@ pub struct RootSchema {
 }
 
 impl RootSchema {
-    /// Create a new RootSchema with a YamlSchema::Empty
+    /// Create a new RootSchema with a YamlSchema
     pub fn new(schema: YamlSchema) -> RootSchema {
         RootSchema {
             id: None,
             meta_schema: None,
             schema: Rc::new(schema),
         }
+    }
+
+    /// Create a new RootSchema with a Schema
+    pub fn new_with_schema(schema: Schema) -> RootSchema {
+        RootSchema::new(YamlSchema::from(schema))
     }
 
     /// Load a RootSchema from a file
@@ -59,7 +65,7 @@ impl RootSchema {
     pub fn load_from_str(schema: &str) -> Result<RootSchema> {
         let docs = saphyr::Yaml::load_from_str(schema)?;
         if docs.is_empty() {
-            return Ok(RootSchema::new(YamlSchema::Empty)); // empty schema
+            return Ok(RootSchema::new(YamlSchema::empty())); // empty schema
         }
         loader::load_from_doc(docs.first().unwrap())
     }
@@ -189,7 +195,45 @@ impl std::fmt::Display for ConstValue {
 
 /// YamlSchema is the core of the validation model
 #[derive(Debug, Default, PartialEq)]
-pub enum YamlSchema {
+pub struct YamlSchema {
+    pub metadata: Option<LinkedHashMap<String, String>>,
+    pub schema: Schema,
+}
+
+impl From<Schema> for YamlSchema {
+    fn from(schema: Schema) -> Self {
+        YamlSchema {
+            metadata: None,
+            schema,
+        }
+    }
+}
+
+impl YamlSchema {
+    pub fn empty() -> YamlSchema {
+        YamlSchema {
+            metadata: None,
+            schema: Schema::Empty,
+        }
+    }
+
+    pub fn null() -> YamlSchema {
+        YamlSchema {
+            metadata: None,
+            schema: Schema::TypeNull,
+        }
+    }
+
+    pub fn boolean_literal(value: bool) -> YamlSchema {
+        YamlSchema {
+            metadata: None,
+            schema: Schema::BooleanLiteral(value),
+        }
+    }
+}
+
+#[derive(Debug, Default, PartialEq)]
+pub enum Schema {
     #[default]
     Empty, // no value
     BooleanLiteral(bool),   // `true` or `false`
@@ -207,51 +251,45 @@ pub enum YamlSchema {
     Not(NotSchema),         // `not`
 }
 
-impl YamlSchema {
-    pub fn boolean_literal(value: bool) -> YamlSchema {
-        YamlSchema::BooleanLiteral(value)
-    }
-}
-
 impl std::fmt::Display for YamlSchema {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            YamlSchema::Empty => write!(f, "<empty schema>"),
-            YamlSchema::TypeNull => write!(f, "type: null"),
-            YamlSchema::BooleanLiteral(b) => write!(f, "{}", b),
-            YamlSchema::BooleanSchema => write!(f, "type: boolean"),
-            YamlSchema::Const(c) => write!(f, "{}", c),
-            YamlSchema::Enum(e) => write!(f, "{}", e),
-            YamlSchema::Integer(i) => write!(f, "{}", i),
-            YamlSchema::AnyOf(any_of_schema) => {
+        match &self.schema {
+            Schema::Empty => write!(f, "<empty schema>"),
+            Schema::TypeNull => write!(f, "type: null"),
+            Schema::BooleanLiteral(b) => write!(f, "{}", b),
+            Schema::BooleanSchema => write!(f, "type: boolean"),
+            Schema::Const(c) => write!(f, "{}", c),
+            Schema::Enum(e) => write!(f, "{}", e),
+            Schema::Integer(i) => write!(f, "{}", i),
+            Schema::AnyOf(any_of_schema) => {
                 write!(f, "{}", any_of_schema)
             }
-            YamlSchema::OneOf(one_of_schema) => {
+            Schema::OneOf(one_of_schema) => {
                 write!(f, "{}", one_of_schema)
             }
-            YamlSchema::Not(not_schema) => {
+            Schema::Not(not_schema) => {
                 write!(f, "{}", not_schema)
             }
-            YamlSchema::String(s) => write!(f, "{}", s),
-            YamlSchema::Number(n) => write!(f, "{}", n),
-            YamlSchema::Object(o) => write!(f, "{}", o),
-            YamlSchema::Array(a) => write!(f, "{}", a),
+            Schema::String(s) => write!(f, "{}", s),
+            Schema::Number(n) => write!(f, "{}", n),
+            Schema::Object(o) => write!(f, "{}", o),
+            Schema::Array(a) => write!(f, "{}", a),
         }
     }
 }
 
 /// Converts (upcast) a TypedSchema to a YamlSchema
 /// Since a YamlSchema is a superset of a TypedSchema, this is a lossless conversion
-impl From<TypedSchema> for YamlSchema {
+impl From<TypedSchema> for Schema {
     fn from(schema: TypedSchema) -> Self {
         match schema {
-            TypedSchema::Array(array_schema) => YamlSchema::Array(array_schema),
-            TypedSchema::BooleanSchema => YamlSchema::BooleanSchema,
-            TypedSchema::Null => YamlSchema::TypeNull,
-            TypedSchema::Integer(integer_schema) => YamlSchema::Integer(integer_schema),
-            TypedSchema::Number(number_schema) => YamlSchema::Number(number_schema),
-            TypedSchema::Object(object_schema) => YamlSchema::Object(object_schema),
-            TypedSchema::String(string_schema) => YamlSchema::String(string_schema),
+            TypedSchema::Array(array_schema) => Schema::Array(array_schema),
+            TypedSchema::BooleanSchema => Schema::BooleanSchema,
+            TypedSchema::Null => Schema::TypeNull,
+            TypedSchema::Integer(integer_schema) => Schema::Integer(integer_schema),
+            TypedSchema::Number(number_schema) => Schema::Number(number_schema),
+            TypedSchema::Object(object_schema) => Schema::Object(object_schema),
+            TypedSchema::String(string_schema) => Schema::String(string_schema),
         }
     }
 }
